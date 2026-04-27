@@ -10,6 +10,7 @@ public class SystemUsage {
         var processor = hardware.getProcessor();
         var prevTicks = processor.getSystemCpuLoadTicks();
         Util.sleep(1000);
+
         cpuLoad = processor.getSystemCpuLoadBetweenTicks(prevTicks);
     }
 
