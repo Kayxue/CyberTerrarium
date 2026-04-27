@@ -6,6 +6,6 @@ public class Greeting {
     private static JVMPlatform platform = getPlatform();
 
     public String greet() {
-        return "Hello from " + platform.getName();
+        return String.valueOf(SystemUsage.getSystemUsage().cpuLoad);
     }
 }
