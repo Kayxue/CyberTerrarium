@@ -28,6 +28,7 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation("com.github.oshi:oshi-core:6.12.0")
+            implementation("org.xerial:sqlite-jdbc:3.46.1.3")
         }
     }
 }
