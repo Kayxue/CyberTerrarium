@@ -2,7 +2,7 @@ package job.model.trigger;
 
 import java.time.Duration;
 
-public final class IntervalTrigger implements JobTrigger {
+public final class IntervalTrigger implements FlowTrigger {
     private Duration duration;
 
     public IntervalTrigger() {

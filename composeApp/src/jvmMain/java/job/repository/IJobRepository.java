@@ -6,9 +6,10 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IJobRepository {
-    void save(Job job);
-    Optional<Job> findById(String id);
+    Optional<Job> findOneById(String id);
+    List<Job> findManyByIds(List<String> ids);
     List<Job> findAll();
-    void delete(String id);
+    void save(Job job);
+    void updateOneById(String id, Job job);
+    void deleteOneById(String id);
 }
-

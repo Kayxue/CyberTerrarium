@@ -1,7 +1,7 @@
 package job.model;
 
 import job.model.script.JobScript;
-import job.model.trigger.JobTrigger;
+import job.model.trigger.FlowTrigger;
 import job.model.trigger.ManualTrigger;
 
 import java.util.ArrayList;
@@ -14,7 +14,7 @@ public class Job {
     private String description;
     private JobScript script;
     private JobConfig config;
-    private JobTrigger trigger;
+    private FlowTrigger trigger;
     private List<JobDependency> dependencies;
     private boolean enabled;
 
@@ -32,7 +32,7 @@ public class Job {
         String description,
         JobScript script,
         JobConfig config,
-        JobTrigger trigger,
+        FlowTrigger trigger,
         List<JobDependency> dependencies,
         boolean enabled
     ) {
@@ -89,9 +89,9 @@ public class Job {
         this.config = config;
     }
 
-    public JobTrigger getTrigger() { return trigger; }
+    public FlowTrigger getTrigger() { return trigger; }
 
-    public void setTrigger(JobTrigger trigger) {
+    public void setTrigger(FlowTrigger trigger) {
         this.trigger = trigger;
     }
 
