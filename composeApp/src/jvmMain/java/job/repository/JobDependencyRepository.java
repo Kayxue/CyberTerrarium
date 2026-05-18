@@ -8,7 +8,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 public class JobDependencyRepository implements IJobDependencyRepository {
     private final DatabaseFactory databaseFactory;
@@ -18,74 +21,148 @@ public class JobDependencyRepository implements IJobDependencyRepository {
     }
 
     @Override
-    public void replaceDependencies(String jobId, List<JobDependency> dependencies) {
-        String deleteSql = "DELETE FROM job_dependency WHERE job_id = ?";
-        String insertSql = """
-            INSERT INTO job_dependency(job_id, upstream_job_id)
-            VALUES (?, ?)
+    public Optional<JobDependency> findOneById(String jobId, String upstreamJobId) {
+        String sql = """
+            SELECT job_id, upstream_job_id
+            FROM job_dependency
+            WHERE job_id = ? AND upstream_job_id = ?
             """;
-        try (Connection conn = databaseFactory.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                try (PreparedStatement deletePs = conn.prepareStatement(deleteSql)) {
-                    deletePs.setString(1, jobId);
-                    deletePs.executeUpdate();
+        try (Connection conn = databaseFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, jobId);
+            ps.setString(2, upstreamJobId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return Optional.empty();
                 }
-                if (dependencies != null && !dependencies.isEmpty()) {
-                    try (PreparedStatement insertPs = conn.prepareStatement(insertSql)) {
-                        for (JobDependency dependency : dependencies) {
-                            insertPs.setString(1, jobId);
-                            insertPs.setString(2, dependency.getUpstreamJobId());
-                            insertPs.addBatch();
-                        }
-                        insertPs.executeBatch();
-                    }
-                }
-                conn.commit();
-            } catch (SQLException e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
+                return Optional.of(mapDependency(rs));
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to replace job dependencies: " + jobId, e);
+            throw new RuntimeException(
+                    "Failed to find one job dependency: " + jobId + " -> " + upstreamJobId,
+                    e
+            );
         }
     }
 
     @Override
-    public List<JobDependency> findByJobId(String jobId) {
+    public List<JobDependency> findAll() {
         String sql = """
-            SELECT upstream_job_id
+            SELECT job_id, upstream_job_id
             FROM job_dependency
-            WHERE job_id = ?
-            ORDER BY upstream_job_id
+            ORDER BY job_id, upstream_job_id
             """;
         List<JobDependency> dependencies = new ArrayList<>();
         try (Connection conn = databaseFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                dependencies.add(mapDependency(rs));
+            }
+            return dependencies;
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to list all job dependencies", e);
+        }
+    }
+
+    @Override
+    public List<JobDependency> findManyByJobIds(List<String> jobIds) {
+        if (jobIds == null || jobIds.isEmpty()) {
+            return List.of();
+        }
+        Set<String> normalized = new LinkedHashSet<>();
+        for (String jobId : jobIds) {
+            if (jobId != null && !jobId.isBlank()) {
+                normalized.add(jobId);
+            }
+        }
+        if (normalized.isEmpty()) {
+            return List.of();
+        }
+
+        String placeholders = String.join(", ", java.util.Collections.nCopies(normalized.size(), "?"));
+        String sql = """
+            SELECT job_id, upstream_job_id
+            FROM job_dependency
+            WHERE job_id IN (%s)
+            ORDER BY job_id, upstream_job_id
+            """.formatted(placeholders);
+
+        List<JobDependency> dependencies = new ArrayList<>();
+        try (Connection conn = databaseFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, jobId);
+            int index = 1;
+            for (String jobId : normalized) {
+                ps.setString(index++, jobId);
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    dependencies.add(new JobDependency(rs.getString("upstream_job_id")));
+                    dependencies.add(mapDependency(rs));
                 }
             }
             return dependencies;
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to list job dependencies: " + jobId, e);
+            throw new RuntimeException("Failed to find many job dependencies by job ids", e);
         }
     }
 
     @Override
-    public void deleteByJobId(String jobId) {
-        String sql = "DELETE FROM job_dependency WHERE job_id = ?";
+    public void save(String jobId, JobDependency dependency) {
+        String sql = """
+            INSERT INTO job_dependency(job_id, upstream_job_id)
+            VALUES (?, ?)
+            """;
         try (Connection conn = databaseFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, jobId);
+            ps.setString(2, dependency.getUpstreamJobId());
             ps.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to delete job dependencies: " + jobId, e);
+            throw new RuntimeException("Failed to save job dependency: " + jobId, e);
         }
     }
-}
 
+    @Override
+    public void updateOneById(String jobId, String upstreamJobId, JobDependency dependency) {
+        String sql = """
+            UPDATE job_dependency
+            SET upstream_job_id = ?
+            WHERE job_id = ? AND upstream_job_id = ?
+            """;
+        try (Connection conn = databaseFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, dependency.getUpstreamJobId());
+            ps.setString(2, jobId);
+            ps.setString(3, upstreamJobId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(
+                "Failed to update one job dependency: " + jobId + " -> " + upstreamJobId,
+                e
+            );
+        }
+    }
+
+    @Override
+    public void deleteOneById(String jobId, String upstreamJobId) {
+        String sql = "DELETE FROM job_dependency WHERE job_id = ? AND upstream_job_id = ?";
+        try (Connection conn = databaseFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, jobId);
+            ps.setString(2, upstreamJobId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(
+                "Failed to delete one job dependency: " + jobId + " -> " + upstreamJobId,
+                e
+            );
+        }
+    }
+
+    private static JobDependency mapDependency(ResultSet rs) throws SQLException {
+        JobDependency dependency = new JobDependency();
+        dependency.setJobId(rs.getString("job_id"));
+        dependency.setUpstreamJobId(rs.getString("upstream_job_id"));
+        return dependency;
+    }
+}

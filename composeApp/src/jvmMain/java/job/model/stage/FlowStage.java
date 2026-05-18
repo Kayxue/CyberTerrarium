@@ -1,19 +1,28 @@
 package job.model.stage;
 
-public class JobStage {
+public class FlowStage {
     private String id;
+    private String flowId;
     private String displayName;
     private int order;
     private BarrierMode barrierMode;
     private StageFailMode failMode;
 
-    public JobStage() {
+    public FlowStage() {
         this.barrierMode = BarrierMode.SOFT;
         this.failMode = StageFailMode.STOP;
     }
 
-    public JobStage(String id, String displayName, int order, BarrierMode barrierMode, StageFailMode failMode) {
+    public FlowStage(
+        String id,
+        String flowId,
+        String displayName,
+        int order,
+        BarrierMode barrierMode,
+        StageFailMode failMode
+    ) {
         this.id = id;
+        this.flowId = flowId;
         this.displayName = displayName;
         this.order = order;
         this.barrierMode = barrierMode;
@@ -26,6 +35,14 @@ public class JobStage {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getFlowId() {
+        return flowId;
+    }
+
+    public void setFlowId(String flowId) {
+        this.flowId = flowId;
     }
 
     public String getDisplayName() {

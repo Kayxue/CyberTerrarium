@@ -10,8 +10,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public class JobRepository implements IJobRepository {
     private final DatabaseFactory databaseFactory;
@@ -20,38 +22,9 @@ public class JobRepository implements IJobRepository {
         this.databaseFactory = databaseFactory;
     }
 
-    @Override
-    public void save(Job job) {
-        String sql = """
-            INSERT INTO job(id, stage_id, title, description, script_language, script_content, enabled, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(id) DO UPDATE SET
-                stage_id = excluded.stage_id,
-                title = excluded.title,
-                description = excluded.description,
-                script_language = excluded.script_language,
-                script_content = excluded.script_content,
-                enabled = excluded.enabled,
-                updated_at = CURRENT_TIMESTAMP
-            """;
-        try (Connection conn = databaseFactory.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nullToEmpty(job.getId()));
-            ps.setString(2, nullToEmpty(job.getStageId()));
-            ps.setString(3, nullToEmpty(job.getTitle()));
-            ps.setString(4, nullToEmpty(job.getDescription()));
-            JobScript script = job.getScript() == null ? new JobScript() : job.getScript();
-            ps.setString(5, script.getLanguage().name());
-            ps.setString(6, nullToEmpty(script.getContent()));
-            ps.setInt(7, job.isEnabled() ? 1 : 0);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to save job: " + job.getId(), e);
-        }
-    }
 
     @Override
-    public Optional<Job> findById(String id) {
+    public Optional<Job> findOneById(String id) {
         String sql = """
             SELECT id, stage_id, title, description, script_language, script_content, enabled
             FROM job
@@ -67,7 +40,47 @@ public class JobRepository implements IJobRepository {
                 return Optional.of(mapJob(rs));
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to find job: " + id, e);
+            throw new RuntimeException("Failed to find one job: " + id, e);
+        }
+    }
+
+    @Override
+    public List<Job> findManyByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> normalized = new LinkedHashSet<>();
+        for (String id : ids) {
+            if (id != null && !id.isBlank()) {
+                normalized.add(id);
+            }
+        }
+        if (normalized.isEmpty()) {
+            return List.of();
+        }
+
+        String placeholders = String.join(", ", java.util.Collections.nCopies(normalized.size(), "?"));
+        String sql = """
+            SELECT id, stage_id, title, description, script_language, script_content, enabled
+            FROM job
+            WHERE id IN (%s)
+            """.formatted(placeholders);
+        List<Job> jobs = new ArrayList<>();
+        try (Connection conn = databaseFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            int index = 1;
+            for (String id : normalized) {
+                ps.setString(index++, id);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    jobs.add(mapJob(rs));
+                }
+            }
+            return jobs;
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find many jobs by ids", e);
         }
     }
 
@@ -92,14 +105,59 @@ public class JobRepository implements IJobRepository {
     }
 
     @Override
-    public void delete(String id) {
+    public void save(Job job) {
+        String sql = """
+            INSERT INTO job(id, stage_id, title, description, script_language, script_content, enabled)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """;
+        try (Connection conn = databaseFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, nullToEmpty(job.getId()));
+            ps.setString(2, nullToEmpty(job.getStageId()));
+            ps.setString(3, nullToEmpty(job.getTitle()));
+            ps.setString(4, nullToEmpty(job.getDescription()));
+            JobScript script = job.getScript() == null ? new JobScript() : job.getScript();
+            ps.setString(5, script.getLanguage().name());
+            ps.setString(6, nullToEmpty(script.getContent()));
+            ps.setInt(7, job.isEnabled() ? 1 : 0);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to save job: " + job.getId(), e);
+        }
+    }
+
+    @Override
+    public void updateOneById(String id, Job job) {
+        String sql = """
+            UPDATE job
+            SET stage_id = ?, title = ?, description = ?, script_language = ?, script_content = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """;
+        try (Connection conn = databaseFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            JobScript script = job.getScript() == null ? new JobScript() : job.getScript();
+            ps.setString(1, nullToEmpty(job.getStageId()));
+            ps.setString(2, nullToEmpty(job.getTitle()));
+            ps.setString(3, nullToEmpty(job.getDescription()));
+            ps.setString(4, script.getLanguage().name());
+            ps.setString(5, nullToEmpty(script.getContent()));
+            ps.setInt(6, job.isEnabled() ? 1 : 0);
+            ps.setString(7, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to update job: " + id, e);
+        }
+    }
+
+    @Override
+    public void deleteOneById(String id) {
         String sql = "DELETE FROM job WHERE id = ?";
         try (Connection conn = databaseFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, id);
             ps.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to delete job: " + id, e);
+            throw new RuntimeException("Failed to delete one job: " + id, e);
         }
     }
 
