@@ -1,48 +1,71 @@
 package com.kay.cyberterrarium
 
-import Greeting
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import org.jetbrains.compose.resources.painterResource
-
-import cyberterrarium.composeapp.generated.resources.Res
-import cyberterrarium.composeapp.generated.resources.compose_multiplatform
+import androidx.compose.ui.unit.dp
 
 @Composable
-@Preview
 fun App() {
+    var selectedItem by remember { mutableIntStateOf(0) }
+
+    val items = listOf("Terrarium", "Stats", "Management")
+
+    val selectedIcons = listOf(
+        Icons.Filled.Home,
+        Icons.Filled.QueryStats,
+        Icons.Filled.Settings
+    )
+
+    val unselectedIcons = listOf(
+        Icons.Outlined.Home,
+        Icons.Outlined.QueryStats,
+        Icons.Outlined.Settings
+    )
+
     MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
+        Row(modifier = Modifier.fillMaxSize()) {
+            NavigationRail(modifier = Modifier.fillMaxHeight()) {
+                items.forEachIndexed { index, item ->
+                    NavigationRailItem(
+                        icon = {
+                            Icon(
+                                imageVector = if (selectedItem == index) selectedIcons[index] else unselectedIcons[index],
+                                contentDescription = item,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        },
+                        label = { Text(item) },
+                        selected = selectedItem == index,
+                        modifier = Modifier.padding(top = if(index == 0) 16.dp else 8.dp ),
+                        onClick = { selectedItem = index }
+                    )
+                }
             }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = items[selectedItem],
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = selectedIcons[selectedItem],
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
