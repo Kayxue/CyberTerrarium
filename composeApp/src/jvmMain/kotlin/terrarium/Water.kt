@@ -1,6 +1,7 @@
 package terrarium
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -13,7 +14,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun WaterCanvas() {
     Canvas(
-        modifier = Modifier.size(300.dp, 200.dp)
+        modifier = Modifier.fillMaxSize()
     ) {
         val width = size.width
         val height = size.height
