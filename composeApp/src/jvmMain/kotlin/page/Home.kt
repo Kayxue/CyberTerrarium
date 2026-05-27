@@ -27,14 +27,21 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import state.rememberSystemUsage
 import terrarium.FishCanvas
 import terrarium.WaterCanvas
+import kotlin.math.roundToInt
 
 @Composable
 fun Home(){
-    val cpuAnimatedProgress by animateFloatAsState(targetValue = 0.39f, animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec)
+    val usage = rememberSystemUsage()
 
-    val memoryAnimatedProgress by animateFloatAsState(targetValue = 0.56f, animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec)
+    val cpuAnimatedProgress by animateFloatAsState(targetValue = usage?.cpuUsagePercent()?.toFloat()?.div(100) ?: 0f, animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec)
+
+    val memoryAnimatedProgress by animateFloatAsState(
+        targetValue = usage?.memoryUsagePercent()?.toFloat()?.div(100)
+            ?: 0f, animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
+    )
 
     Column(modifier = Modifier.padding(16.dp)) {
         Box(modifier = Modifier.fillMaxWidth().weight(3f).clip(RoundedCornerShape(12.dp))) {
@@ -50,7 +57,11 @@ fun Home(){
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("CPU Usage", fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(8.dp))
-                        Text("39%", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "${usage?.cpuUsagePercent?.roundToInt() ?: 0}%",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                         Spacer(Modifier.height(16.dp))
                         LinearProgressIndicator(
                             progress = { cpuAnimatedProgress },
@@ -68,7 +79,13 @@ fun Home(){
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Memory Usage", fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(8.dp))
-                        Text("4.5 GB", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "${
+                                "%.1f".format(
+                                    usage?.memoryUsedBytes?.toFloat()?.div(1024)?.div(1024)?.div(1024) ?: 0f
+                                )
+                            } GB", fontSize = 24.sp, fontWeight = FontWeight.Bold
+                        )
                         Spacer(Modifier.height(16.dp))
                         LinearProgressIndicator(
                             progress = { memoryAnimatedProgress },
