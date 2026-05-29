@@ -95,7 +95,25 @@ public final class MigrationRunner {
         new Migration(10, "ensure stage relative position columns on jobs_to_flows", "SELECT 1"),
         new Migration(11, "ensure stage width column on flow_stage", "SELECT 1"),
         new Migration(12, "ensure order column on job", "SELECT 1"),
-        new Migration(13, "ensure bend point columns on job_dependency", "SELECT 1")
+        new Migration(13, "ensure bend point columns on job_dependency", "SELECT 1"),
+        new Migration(14, "create flow_run_job table", """
+            CREATE TABLE IF NOT EXISTS flow_run_job (
+                run_id INTEGER NOT NULL,
+                job_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'IDLE',
+                exit_code INTEGER NOT NULL DEFAULT -1,
+                stdout_text TEXT NOT NULL DEFAULT '',
+                stderr_text TEXT NOT NULL DEFAULT '',
+                error_message TEXT NOT NULL DEFAULT '',
+                started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                ended_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                duration_ms INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (run_id, job_id),
+                FOREIGN KEY (run_id) REFERENCES flow_run(id) ON DELETE CASCADE,
+                FOREIGN KEY (job_id) REFERENCES job(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_flow_run_job_run_id ON flow_run_job(run_id)
+        """)
     );
     private MigrationRunner() {}
     public static void migrate() {
@@ -227,6 +245,24 @@ public final class MigrationRunner {
             if (!tableHasColumn(conn, "job_dependency", "bend_y")) {
                 execute(conn, "ALTER TABLE job_dependency ADD COLUMN bend_y REAL NOT NULL DEFAULT -1");
             }
+        }
+        if (version == 14 && tableExists(conn, "flow_run_job")) {
+            if (!tableHasColumn(conn, "flow_run_job", "exit_code")) {
+                execute(conn, "ALTER TABLE flow_run_job ADD COLUMN exit_code INTEGER NOT NULL DEFAULT -1");
+            }
+            if (!tableHasColumn(conn, "flow_run_job", "stdout_text")) {
+                execute(conn, "ALTER TABLE flow_run_job ADD COLUMN stdout_text TEXT NOT NULL DEFAULT ''");
+            }
+            if (!tableHasColumn(conn, "flow_run_job", "stderr_text")) {
+                execute(conn, "ALTER TABLE flow_run_job ADD COLUMN stderr_text TEXT NOT NULL DEFAULT ''");
+            }
+            if (!tableHasColumn(conn, "flow_run_job", "error_message")) {
+                execute(conn, "ALTER TABLE flow_run_job ADD COLUMN error_message TEXT NOT NULL DEFAULT ''");
+            }
+            if (!tableHasColumn(conn, "flow_run_job", "duration_ms")) {
+                execute(conn, "ALTER TABLE flow_run_job ADD COLUMN duration_ms INTEGER NOT NULL DEFAULT 0");
+            }
+            execute(conn, "CREATE INDEX IF NOT EXISTS idx_flow_run_job_run_id ON flow_run_job(run_id)");
         }
     }
 

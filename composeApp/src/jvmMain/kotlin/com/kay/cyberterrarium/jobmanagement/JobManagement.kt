@@ -26,8 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.kay.cyberterrarium.jobmanagement.components.FlowGraphView
 import com.kay.cyberterrarium.jobmanagement.components.FlowJobCatalogPage
+import com.kay.cyberterrarium.jobmanagement.components.FlowRunResultsPage
 import com.kay.cyberterrarium.jobmanagement.components.GraphSelection
 import com.kay.cyberterrarium.jobmanagement.components.AppTextButton
+import com.kay.cyberterrarium.jobmanagement.components.JobScriptEditorPage
 import com.kay.cyberterrarium.jobmanagement.components.JobManagementHeader
 import com.kay.cyberterrarium.jobmanagement.components.SelectDropdownField
 import com.kay.cyberterrarium.jobmanagement.components.SelectionInspectorPanel
@@ -36,6 +38,7 @@ import job.model.Job
 import job.model.JobDependency
 import job.model.flow.FlowJobLink
 import job.model.result.FlowRun
+import job.model.result.FlowRunJob
 import job.model.script.ScriptLanguage
 import job.model.stage.BarrierMode
 import job.model.stage.FlowStage
@@ -54,11 +57,13 @@ fun JobManagement() {
     var currentPage by remember { mutableStateOf(JobManagementPage.GRAPH) }
     var catalogShowsFlows by remember { mutableStateOf(true) }
     var selection by remember { mutableStateOf<GraphSelection?>(null) }
+    var scriptEditorJobId by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf("") }
 
     var allJobs by remember { mutableStateOf<List<Job>>(emptyList()) }
     var allFlowLinks by remember { mutableStateOf<List<FlowJobLink>>(emptyList()) }
     var allFlowRuns by remember { mutableStateOf<List<FlowRun>>(emptyList()) }
+    var allFlowRunJobs by remember { mutableStateOf<List<FlowRunJob>>(emptyList()) }
     var allFlowStages by remember { mutableStateOf<List<FlowStage>>(emptyList()) }
     var currentFlowDependencies by remember { mutableStateOf<List<JobDependency>>(emptyList()) }
 
@@ -86,6 +91,10 @@ fun JobManagement() {
         val allById = allJobs.associateBy { it.id }
         currentFlowLinks.mapNotNull { allById[it.jobId] }.associateBy { it.id }
     }
+    val scriptEditorJob = remember(scriptEditorJobId, allJobs) {
+        val id = scriptEditorJobId ?: return@remember null
+        allJobs.firstOrNull { it.id == id }
+    }
 
     fun refresh() {
         scope.launch {
@@ -94,6 +103,7 @@ fun JobManagement() {
                     val jobs = controller.listJobs()
                     val links = controller.listAllFlowJobs()
                     val runs = controller.listFlowRuns()
+                    val runJobs = controller.listFlowRunJobs(runs.map { it.id })
                     val stages = controller.listAllFlowStages()
 
                     val targetFlowId = selectedFlowId
@@ -105,12 +115,13 @@ fun JobManagement() {
                             .map { it.jobId }
                         controller.listJobDependenciesByJobIds(flowJobIds)
                     }
-                    DashboardSnapshot(jobs, links, runs, stages, dependencies)
+                    DashboardSnapshot(jobs, links, runs, runJobs, stages, dependencies)
                 }
 
                 allJobs = snapshot.jobs
                 allFlowLinks = snapshot.flowLinks
                 allFlowRuns = snapshot.flowRuns
+                allFlowRunJobs = snapshot.flowRunJobs
                 allFlowStages = snapshot.flowStages
                 currentFlowDependencies = snapshot.dependencies
             } catch (e: Exception) {
@@ -245,6 +256,8 @@ fun JobManagement() {
         ) {
             JobManagementHeader(
                 currentPageIsGraph = currentPage == JobManagementPage.GRAPH,
+                currentPageIsCatalog = currentPage == JobManagementPage.CATALOG,
+                currentPageIsResults = currentPage == JobManagementPage.RESULTS,
                 selectedFlowId = selectedFlowId,
                 flowIds = flowIds,
                 maxWorkersText = maxWorkersText,
@@ -268,13 +281,9 @@ fun JobManagement() {
                     }
                 },
                 onRefresh = { refresh() },
-                onTogglePage = {
-                    currentPage = if (currentPage == JobManagementPage.GRAPH) {
-                        JobManagementPage.CATALOG
-                    } else {
-                        JobManagementPage.GRAPH
-                    }
-                }
+                onOpenCatalog = { currentPage = JobManagementPage.CATALOG },
+                onOpenResults = { currentPage = JobManagementPage.RESULTS },
+                onOpenGraph = { currentPage = JobManagementPage.GRAPH }
             )
 
             if (message.isNotBlank()) {
@@ -477,6 +486,10 @@ fun JobManagement() {
                                             refresh()
                                         }
                                     },
+                                    onEditJobScript = { jobId ->
+                                        scriptEditorJobId = jobId
+                                        currentPage = JobManagementPage.SCRIPT_EDITOR
+                                    },
                                     onDeleteJob = { jobId ->
                                         scope.launch {
                                             withContext(Dispatchers.IO) { controller.deleteJob(jobId) }
@@ -523,6 +536,57 @@ fun JobManagement() {
                                 )
                             }
                         }
+                    }
+                }
+
+                JobManagementPage.RESULTS -> {
+                    FlowRunResultsPage(
+                        flowRuns = allFlowRuns,
+                        flowRunJobs = allFlowRunJobs,
+                        selectedFlowId = selectedFlowId,
+                        onSelectFlow = { flowId ->
+                            selectFlow(flowId)
+                            currentPage = JobManagementPage.GRAPH
+                        }
+                    )
+                }
+
+                JobManagementPage.SCRIPT_EDITOR -> {
+                    val job = scriptEditorJob
+                    if (job == null) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("Script target job not found.")
+                            AppTextButton(onClick = {
+                                scriptEditorJobId = null
+                                currentPage = JobManagementPage.GRAPH
+                            }) { Text("Back to Graph") }
+                        }
+                    } else {
+                        JobScriptEditorPage(
+                            job = job,
+                            onBack = {
+                                currentPage = JobManagementPage.GRAPH
+                            },
+                            onSave = { jobId, language, content ->
+                                scope.launch {
+                                    try {
+                                        withContext(Dispatchers.IO) {
+                                            controller.updateJobScript(jobId, language, content)
+                                        }
+                                        message = "Script updated: $jobId (${language.name})"
+                                        refresh()
+                                        currentPage = JobManagementPage.GRAPH
+                                    } catch (e: Exception) {
+                                        message = "Save script failed: ${e.message}"
+                                    }
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -645,13 +709,16 @@ private fun CreateJobDialog(
 
 private enum class JobManagementPage {
     GRAPH,
-    CATALOG
+    CATALOG,
+    RESULTS,
+    SCRIPT_EDITOR
 }
 
 private data class DashboardSnapshot(
     val jobs: List<Job>,
     val flowLinks: List<FlowJobLink>,
     val flowRuns: List<FlowRun>,
+    val flowRunJobs: List<FlowRunJob>,
     val flowStages: List<FlowStage>,
     val dependencies: List<JobDependency>
 )

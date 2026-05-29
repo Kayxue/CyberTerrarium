@@ -10,6 +10,7 @@ import job.model.JobConfig;
 import job.model.JobDependency;
 import job.model.flow.FlowJobLink;
 import job.model.result.FlowRun;
+import job.model.result.FlowRunJob;
 import job.model.script.JobScript;
 import job.model.script.ScriptLanguage;
 import job.model.stage.BarrierMode;
@@ -18,10 +19,12 @@ import job.model.stage.StageFailMode;
 import job.model.trigger.ManualTrigger;
 import job.repository.FlowJobRepository;
 import job.repository.FlowRunRepository;
+import job.repository.FlowRunJobRepository;
 import job.repository.FlowStageRepository;
 import job.repository.FlowTriggerRepository;
 import job.repository.IFlowJobRepository;
 import job.repository.IFlowRunRepository;
+import job.repository.IFlowRunJobRepository;
 import job.repository.IFlowStageRepository;
 import job.repository.IFlowTriggerRepository;
 import job.repository.IJobConfigRepository;
@@ -46,6 +49,7 @@ public class JobController implements IJobController {
     private final IFlowJobRepository flowJobRepository;
     private final IFlowStageRepository flowStageRepository;
     private final IFlowRunRepository flowRunRepository;
+    private final IFlowRunJobRepository flowRunJobRepository;
     private final Executor executor;
 
     public JobController(
@@ -56,6 +60,7 @@ public class JobController implements IJobController {
         IFlowJobRepository flowJobRepository,
         IFlowStageRepository flowStageRepository,
         IFlowRunRepository flowRunRepository,
+        IFlowRunJobRepository flowRunJobRepository,
         Executor executor
     ) {
         this.jobRepository = jobRepository;
@@ -65,6 +70,7 @@ public class JobController implements IJobController {
         this.flowJobRepository = flowJobRepository;
         this.flowStageRepository = flowStageRepository;
         this.flowRunRepository = flowRunRepository;
+        this.flowRunJobRepository = flowRunJobRepository;
         this.executor = executor;
     }
 
@@ -77,6 +83,7 @@ public class JobController implements IJobController {
         IFlowJobRepository flowJobRepository = new FlowJobRepository(db);
         IFlowStageRepository flowStageRepository = new FlowStageRepository(db);
         IFlowRunRepository flowRunRepository = new FlowRunRepository(db);
+        IFlowRunJobRepository flowRunJobRepository = new FlowRunJobRepository(db);
 
         FlowExecutionPlanner planner = new FlowExecutionPlanner(
             flowJobRepository,
@@ -86,7 +93,7 @@ public class JobController implements IJobController {
         );
         Scheduler scheduler = new Scheduler();
         Dispatcher dispatcher = new Dispatcher();
-        Executor executor = new Executor(planner, scheduler, dispatcher, flowRunRepository);
+        Executor executor = new Executor(planner, scheduler, dispatcher, flowRunRepository, flowRunJobRepository);
         return new JobController(
             jobRepository,
             configRepository,
@@ -95,6 +102,7 @@ public class JobController implements IJobController {
             flowJobRepository,
             flowStageRepository,
             flowRunRepository,
+            flowRunJobRepository,
             executor
         );
     }
@@ -148,6 +156,11 @@ public class JobController implements IJobController {
     @Override
     public List<FlowRun> listFlowRuns() {
         return flowRunRepository.findAll();
+    }
+
+    @Override
+    public List<FlowRunJob> listFlowRunJobs(List<Long> runIds) {
+        return flowRunJobRepository.findManyByRunIds(runIds);
     }
 
     @Override
@@ -238,6 +251,7 @@ public class JobController implements IJobController {
         }
         for (FlowRun run : flowRunRepository.findAll()) {
             if (flowId.equals(run.getFlowId())) {
+                flowRunJobRepository.deleteManyByRunId(run.getId());
                 flowRunRepository.deleteOneById(run.getId());
             }
         }
@@ -273,6 +287,16 @@ public class JobController implements IJobController {
         FlowStage stage = flowStageRepository.findOneById(existing.getStageId())
             .orElseThrow(() -> new IllegalArgumentException("Stage not found: " + existing.getStageId()));
         cleanupInvalidDependenciesForFlow(stage.getFlowId());
+    }
+
+    @Override
+    public void updateJobScript(String jobId, ScriptLanguage language, String scriptContent) {
+        Job existing = jobRepository.findOneById(jobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+        JobScript currentScript = existing.getScript() == null ? new JobScript() : existing.getScript();
+        ScriptLanguage resolvedLanguage = language == null ? currentScript.getLanguage() : language;
+        existing.setScript(new JobScript(resolvedLanguage, scriptContent == null ? "" : scriptContent));
+        jobRepository.updateOneById(jobId, existing);
     }
 
     @Override

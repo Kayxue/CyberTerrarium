@@ -34,6 +34,7 @@ fun SelectionInspectorPanel(
     selectedDependency: JobDependency?,
     onClose: () -> Unit,
     onSaveJob: (String, String, String, String, Int, Boolean) -> Unit,
+    onEditJobScript: (String) -> Unit,
     onDeleteJob: (String) -> Unit,
     onSaveStage: (String, String, Int, BarrierMode, StageFailMode) -> Unit,
     onDeleteStage: (String) -> Unit,
@@ -59,6 +60,7 @@ fun SelectionInspectorPanel(
                     flowJobs = flowJobs,
                     flowStages = flowStages,
                     onSave = onSaveJob,
+                    onEditScript = onEditJobScript,
                     onDelete = onDeleteJob
                 )
             } else if (selectedStage != null) {
@@ -83,6 +85,7 @@ private fun JobInspector(
     flowJobs: List<Job>,
     flowStages: List<FlowStage>,
     onSave: (String, String, String, String, Int, Boolean) -> Unit,
+    onEditScript: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
     var title by remember(selectedJob.id) { mutableStateOf(selectedJob.title) }
@@ -133,6 +136,7 @@ private fun JobInspector(
         Text("Enabled")
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        AppButton(onClick = { onEditScript(selectedJob.id) }) { Text("Edit Script") }
         AppButton(onClick = { onSave(selectedJob.id, title, description, stageId, orderValue, enabled) }) { Text("Save") }
         AppButton(onClick = { onDelete(selectedJob.id) }) { Text("Delete") }
     }

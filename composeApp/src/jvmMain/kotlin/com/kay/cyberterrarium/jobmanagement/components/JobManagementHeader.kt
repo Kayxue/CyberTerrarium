@@ -1,17 +1,15 @@
 package com.kay.cyberterrarium.jobmanagement.components
 
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -19,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +25,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun JobManagementHeader(
     currentPageIsGraph: Boolean,
+    currentPageIsCatalog: Boolean,
+    currentPageIsResults: Boolean,
     selectedFlowId: String?,
     flowIds: List<String>,
     maxWorkersText: String,
@@ -39,149 +38,89 @@ fun JobManagementHeader(
     onOpenCreateStage: () -> Unit,
     onRunFlow: () -> Unit,
     onRefresh: () -> Unit,
-    onTogglePage: () -> Unit
+    onOpenCatalog: () -> Unit,
+    onOpenResults: () -> Unit,
+    onOpenGraph: () -> Unit
 ) {
-    var flowMenuExpanded by remember { mutableStateOf(false) }
+    var createExpanded by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
-    val singleRowThreshold = 1180.dp
 
-    BoxWithConstraints(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 10.dp)
-    ) {
-        val singleRow = maxWidth >= singleRowThreshold
-
-        if (singleRow) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                LeftHeaderControls(
-                    selectedFlowId = selectedFlowId,
-                    flowIds = flowIds,
-                    flowMenuExpanded = flowMenuExpanded,
-                    onFlowMenuExpandedChange = { flowMenuExpanded = it },
-                    onSelectFlow = onSelectFlow,
-                    onClearFlow = onClearFlow,
-                    maxWorkersText = maxWorkersText,
-                    onMaxWorkersChange = onMaxWorkersChange
-                )
-                Spacer(modifier = Modifier.width(20.dp))
-                Spacer(modifier = Modifier.weight(1f))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RightHeaderControls(
-                        onOpenCreateFlow = onOpenCreateFlow,
-                        onOpenCreateJob = onOpenCreateJob,
-                        onOpenCreateStage = onOpenCreateStage,
-                        onRunFlow = onRunFlow,
-                        onRefresh = onRefresh,
-                        onTogglePage = onTogglePage,
-                        currentPageIsGraph = currentPageIsGraph,
-                        selectedFlowId = selectedFlowId
-                    )
-                }
-            }
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LeftHeaderControls(
-                    selectedFlowId = selectedFlowId,
-                    flowIds = flowIds,
-                    flowMenuExpanded = flowMenuExpanded,
-                    onFlowMenuExpandedChange = { flowMenuExpanded = it },
-                    onSelectFlow = onSelectFlow,
-                    onClearFlow = onClearFlow,
-                    maxWorkersText = maxWorkersText,
-                    onMaxWorkersChange = onMaxWorkersChange
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    Row(
-                        modifier = Modifier.horizontalScroll(scrollState),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RightHeaderControls(
-                            onOpenCreateFlow = onOpenCreateFlow,
-                            onOpenCreateJob = onOpenCreateJob,
-                            onOpenCreateStage = onOpenCreateStage,
-                            onRunFlow = onRunFlow,
-                            onRefresh = onRefresh,
-                            onTogglePage = onTogglePage,
-                            currentPageIsGraph = currentPageIsGraph,
-                            selectedFlowId = selectedFlowId
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LeftHeaderControls(
-    selectedFlowId: String?,
-    flowIds: List<String>,
-    flowMenuExpanded: Boolean,
-    onFlowMenuExpandedChange: (Boolean) -> Unit,
-    onSelectFlow: (String) -> Unit,
-    onClearFlow: () -> Unit,
-    maxWorkersText: String,
-    onMaxWorkersChange: (String) -> Unit
-) {
-    Row(
+            .horizontalScroll(scrollState)
+            .widthIn(min = 1280.dp)
+            .padding(bottom = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text("Job Management", style = MaterialTheme.typography.headlineSmall)
-        AppButton(onClick = { onFlowMenuExpandedChange(true) }) {
-            Text(if (selectedFlowId.isNullOrBlank()) "Select Flow" else selectedFlowId)
-        }
-        DropdownMenu(
-            expanded = flowMenuExpanded,
-            onDismissRequest = { onFlowMenuExpandedChange(false) }
-        ) {
-            flowIds.forEach { flowId ->
-                DropdownMenuItem(
-                    text = { Text(flowId) },
-                    onClick = {
-                        onFlowMenuExpandedChange(false)
-                        onSelectFlow(flowId)
-                    }
-                )
-            }
-        }
-        AppButton(onClick = onClearFlow) { Text("Clear") }
+
+        SelectDropdownField(
+            label = "Flow",
+            value = selectedFlowId ?: "Select Flow",
+            options = flowIds.ifEmpty { listOf("No Flows") },
+            onSelect = { selected ->
+                if (selected != "No Flows") {
+                    onSelectFlow(selected)
+                }
+            },
+            modifier = Modifier.width(230.dp)
+        )
+
         OutlinedTextField(
-            modifier = Modifier.width(128.dp),
+            modifier = Modifier.width(118.dp),
             value = maxWorkersText,
             onValueChange = onMaxWorkersChange,
             singleLine = true,
             label = { Text("Workers") }
         )
-    }
-}
 
-@Composable
-private fun RightHeaderControls(
-    onOpenCreateFlow: () -> Unit,
-    onOpenCreateJob: () -> Unit,
-    onOpenCreateStage: () -> Unit,
-    onRunFlow: () -> Unit,
-    onRefresh: () -> Unit,
-    onTogglePage: () -> Unit,
-    currentPageIsGraph: Boolean,
-    selectedFlowId: String?
-) {
-    AppButton(onClick = onOpenCreateFlow) { Text("New Flow") }
-    AppButton(onClick = onOpenCreateStage) { Text("New Stage") }
-    AppButton(onClick = onOpenCreateJob) { Text("New Job") }
-    AppButton(onClick = onRunFlow, enabled = !selectedFlowId.isNullOrBlank()) { Text("Run") }
-    AppButton(onClick = onRefresh) { Text("Refresh") }
-    AppButton(onClick = onTogglePage) {
-        Text(if (currentPageIsGraph) "All Flows / Jobs" else "Back To Graph")
+        Spacer(modifier = Modifier.weight(1f))
+
+        AppButton(
+            onClick = { createExpanded = !createExpanded },
+            variant = AppButtonVariant.MUTED,
+            modifier = Modifier.widthIn(min = 44.dp, max = 52.dp)
+        ) { Text("+") }
+
+        if (createExpanded) {
+            AppButton(onClick = onOpenCreateFlow, variant = AppButtonVariant.MUTED) { Text("Flow") }
+            AppButton(onClick = onOpenCreateStage, variant = AppButtonVariant.MUTED) { Text("Stage") }
+            AppButton(onClick = onOpenCreateJob, variant = AppButtonVariant.MUTED) { Text("Job") }
+        }
+
+        AppButton(
+            onClick = onRunFlow,
+            enabled = !selectedFlowId.isNullOrBlank(),
+            variant = AppButtonVariant.SUCCESS
+        ) { Text("Run") }
+
+        AppButton(
+            onClick = onOpenResults,
+            variant = if (currentPageIsResults) AppButtonVariant.PRIMARY else AppButtonVariant.DEFAULT
+        ) { Text("Results") }
+
+        AppButton(
+            onClick = onRefresh,
+            variant = AppButtonVariant.DEFAULT
+        ) { Text("Refresh") }
+
+        AppButton(
+            onClick = if (currentPageIsCatalog) onOpenGraph else onOpenCatalog,
+            variant = if (currentPageIsCatalog) AppButtonVariant.PRIMARY else AppButtonVariant.DEFAULT
+        ) { Text(if (currentPageIsCatalog) "Graph" else "Catalog") }
+
+        if (!currentPageIsGraph) {
+            AppButton(
+                onClick = onOpenGraph,
+                variant = AppButtonVariant.MUTED
+            ) { Text("Back") }
+        }
+
+        AppButton(
+            onClick = onClearFlow,
+            variant = AppButtonVariant.DANGER
+        ) { Text("Clear") }
     }
 }
