@@ -7,9 +7,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -49,7 +50,7 @@ fun SelectionInspectorPanel(
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Inspector", style = MaterialTheme.typography.titleMedium)
-                Button(onClick = onClose) { Text("Close") }
+                AppButton(onClick = onClose) { Text("Close") }
             }
 
             if (selectedJob != null) {
@@ -99,8 +100,8 @@ private fun JobInspector(
         Text("Enabled")
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = { onSave(selectedJob.id, title, description, stageId, enabled) }) { Text("Save") }
-        Button(onClick = { onDelete(selectedJob.id) }) { Text("Delete") }
+        AppButton(onClick = { onSave(selectedJob.id, title, description, stageId, enabled) }) { Text("Save") }
+        AppButton(onClick = { onDelete(selectedJob.id) }) { Text("Delete") }
     }
 }
 
@@ -112,6 +113,10 @@ private fun StageInspector(
 ) {
     var name by remember(selectedStage.id) { mutableStateOf(selectedStage.displayName) }
     var orderText by remember(selectedStage.id) { mutableStateOf(selectedStage.order.toString()) }
+    var barrierMode by remember(selectedStage.id) { mutableStateOf(selectedStage.barrierMode) }
+    var failMode by remember(selectedStage.id) { mutableStateOf(selectedStage.failMode) }
+    var barrierExpanded by remember(selectedStage.id) { mutableStateOf(false) }
+    var failExpanded by remember(selectedStage.id) { mutableStateOf(false) }
 
     Text("Stage", style = MaterialTheme.typography.titleSmall)
     Text("ID: ${selectedStage.id}")
@@ -122,14 +127,48 @@ private fun StageInspector(
         onValueChange = { orderText = it },
         label = { Text("Order") }
     )
-    Text("Barrier: ${selectedStage.barrierMode}")
-    Text("Fail Mode: ${selectedStage.failMode}")
+
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = {
+        AppButton(onClick = { barrierExpanded = true }) { Text("Barrier: ${barrierMode.name}") }
+        DropdownMenu(
+            expanded = barrierExpanded,
+            onDismissRequest = { barrierExpanded = false }
+        ) {
+            BarrierMode.values().forEach { mode ->
+                DropdownMenuItem(
+                    text = { Text(mode.name) },
+                    onClick = {
+                        barrierMode = mode
+                        barrierExpanded = false
+                    }
+                )
+            }
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        AppButton(onClick = { failExpanded = true }) { Text("Fail Mode: ${failMode.name}") }
+        DropdownMenu(
+            expanded = failExpanded,
+            onDismissRequest = { failExpanded = false }
+        ) {
+            StageFailMode.values().forEach { mode ->
+                DropdownMenuItem(
+                    text = { Text(mode.name) },
+                    onClick = {
+                        failMode = mode
+                        failExpanded = false
+                    }
+                )
+            }
+        }
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        AppButton(onClick = {
             val order = orderText.toIntOrNull() ?: selectedStage.order
-            onSave(selectedStage.id, name, order, selectedStage.barrierMode, selectedStage.failMode)
+            onSave(selectedStage.id, name, order, barrierMode, failMode)
         }) { Text("Save") }
-        Button(onClick = { onDelete(selectedStage.id) }) { Text("Delete") }
+        AppButton(onClick = { onDelete(selectedStage.id) }) { Text("Delete") }
     }
 }
 
@@ -141,7 +180,7 @@ private fun DependencyInspector(
     Text("Dependency", style = MaterialTheme.typography.titleSmall)
     Text("Job: ${selectedDependency.jobId}")
     Text("Depends on: ${selectedDependency.upstreamJobId}")
-    Button(onClick = {
+    AppButton(onClick = {
         onDelete(selectedDependency.jobId, selectedDependency.upstreamJobId)
     }) { Text("Delete Dependency") }
 }

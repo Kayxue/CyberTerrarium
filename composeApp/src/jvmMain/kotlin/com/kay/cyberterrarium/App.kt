@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.kay.cyberterrarium.jobmanagement.JobManagement
 
 @Composable
 fun App() {
@@ -54,18 +55,21 @@ fun App() {
                     .fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = items[selectedItem],
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Icon(
-                        imageVector = selectedIcons[selectedItem],
-                        contentDescription = null,
-                        modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                when (selectedItem) {
+                    2 -> JobManagement()
+                    else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = items[selectedItem],
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Icon(
+                            imageVector = selectedIcons[selectedItem],
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }

@@ -208,20 +208,19 @@ public class JobController implements IJobController {
     }
 
     @Override
-    public void createFlow(String flowId, String initialStageId, String initialStageName) {
-        String normalizedFlowId = normalize(flowId, "demo-flow");
-        String normalizedStageId = normalize(initialStageId, normalizedFlowId + "-stage-1");
-        if (flowStageRepository.findOneById(normalizedStageId).isPresent()) {
-            return;
-        }
+    public String createFlow(String flowName) {
+        String normalizedFlowName = normalize(flowName, "Untitled Flow");
+        String normalizedFlowId = generateUniqueFlowId();
+        String normalizedStageId = generateUniqueStageId(normalizedFlowId);
         FlowStage stage = new FlowStage();
         stage.setId(normalizedStageId);
         stage.setFlowId(normalizedFlowId);
-        stage.setDisplayName(normalize(initialStageName, "Stage 1"));
+        stage.setDisplayName(normalizedFlowName);
         stage.setOrder(0);
         stage.setBarrierMode(BarrierMode.SOFT);
         stage.setFailMode(StageFailMode.STOP);
         flowStageRepository.save(stage);
+        return normalizedFlowId;
     }
 
     @Override
@@ -274,8 +273,30 @@ public class JobController implements IJobController {
         if (normalizedJobId.isEmpty() || normalizedUpstream.isEmpty()) {
             return;
         }
+        if (normalizedJobId.equals(normalizedUpstream)) {
+            throw new IllegalArgumentException("Dependency cannot point to itself");
+        }
+        Job currentJob = jobRepository.findOneById(normalizedJobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + normalizedJobId));
+        Job upstreamJob = jobRepository.findOneById(normalizedUpstream)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + normalizedUpstream));
+        FlowStage currentStage = flowStageRepository.findOneById(currentJob.getStageId())
+            .orElseThrow(() -> new IllegalArgumentException("Stage not found: " + currentJob.getStageId()));
+        FlowStage upstreamStage = flowStageRepository.findOneById(upstreamJob.getStageId())
+            .orElseThrow(() -> new IllegalArgumentException("Stage not found: " + upstreamJob.getStageId()));
+
+        if (!currentStage.getFlowId().equals(upstreamStage.getFlowId())) {
+            throw new IllegalArgumentException("Dependency must stay within the same flow");
+        }
+        if (upstreamStage.getOrder() > currentStage.getOrder()) {
+            throw new IllegalArgumentException("Dependency cannot link to a later stage");
+        }
+
         if (jobDependencyRepository.findOneById(normalizedJobId, normalizedUpstream).isPresent()) {
             return;
+        }
+        if (willCreateCycle(normalizedJobId, normalizedUpstream)) {
+            throw new IllegalArgumentException("Dependency would create a cycle");
         }
         JobDependency dependency = new JobDependency();
         dependency.setJobId(normalizedJobId);
@@ -312,5 +333,56 @@ public class JobController implements IJobController {
             return fallback;
         }
         return value.trim();
+    }
+
+    private String generateUniqueFlowId() {
+        Set<String> existingFlowIds = new LinkedHashSet<>(listFlowIds());
+        String candidate = "flow-" + UUID.randomUUID().toString().substring(0, 8);
+        while (existingFlowIds.contains(candidate)) {
+            candidate = "flow-" + UUID.randomUUID().toString().substring(0, 8);
+        }
+        return candidate;
+    }
+
+    private String generateUniqueStageId(String flowId) {
+        String base = flowId + "-stage-1";
+        String candidate = base;
+        int suffix = 2;
+        while (flowStageRepository.findOneById(candidate).isPresent()) {
+            candidate = base + "-" + suffix;
+            suffix++;
+        }
+        return candidate;
+    }
+
+    private boolean willCreateCycle(String jobId, String upstreamJobId) {
+        // Existing edges represent upstream -> job.
+        java.util.Map<String, java.util.Set<String>> downstreamByUpstream = new java.util.HashMap<>();
+        for (JobDependency dependency : jobDependencyRepository.findAll()) {
+            downstreamByUpstream
+                .computeIfAbsent(dependency.getUpstreamJobId(), ignored -> new java.util.HashSet<>())
+                .add(dependency.getJobId());
+        }
+
+        // If upstream is reachable from job, adding upstream -> job creates a cycle.
+        java.util.ArrayDeque<String> queue = new java.util.ArrayDeque<>();
+        java.util.HashSet<String> visited = new java.util.HashSet<>();
+        queue.add(jobId);
+
+        while (!queue.isEmpty()) {
+            String current = queue.removeFirst();
+            if (!visited.add(current)) {
+                continue;
+            }
+            if (current.equals(upstreamJobId)) {
+                return true;
+            }
+            for (String next : downstreamByUpstream.getOrDefault(current, java.util.Set.of())) {
+                if (!visited.contains(next)) {
+                    queue.addLast(next);
+                }
+            }
+        }
+        return false;
     }
 }

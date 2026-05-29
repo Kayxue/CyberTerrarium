@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,14 +42,19 @@ fun FlowJobCatalogPage(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onShowFlows) { Text("Flows") }
-            Button(onClick = onShowJobs) { Text("Jobs") }
+            AppButton(onClick = onShowFlows) { Text("Flows") }
+            AppButton(onClick = onShowJobs) { Text("Jobs") }
         }
 
         if (showFlows) {
             val stageCountByFlow = flowStages.groupingBy { it.flowId }.eachCount()
             val jobCountByFlow = flowLinks.groupingBy { it.flowId }.eachCount()
             val runCountByFlow = flowRuns.groupingBy { it.flowId }.eachCount()
+            val flowNameById = flowStages
+                .groupBy { it.flowId }
+                .mapValues { (_, stages) ->
+                    stages.minByOrNull { it.order }?.displayName ?: ""
+                }
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(flowIds) { flowId ->
@@ -61,13 +65,16 @@ fun FlowJobCatalogPage(
                         ) {
                             Column {
                                 Text(flowId, style = MaterialTheme.typography.titleMedium)
+                                if (!flowNameById[flowId].isNullOrBlank()) {
+                                    Text("Name: ${flowNameById[flowId]}")
+                                }
                                 Text("Jobs: ${jobCountByFlow[flowId] ?: 0}")
                                 Text("Stages: ${stageCountByFlow[flowId] ?: 0}")
                                 Text("Runs: ${runCountByFlow[flowId] ?: 0}")
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = { onSelectFlow(flowId) }) { Text("Open") }
-                                Button(onClick = { onDeleteFlow(flowId) }) { Text("Delete") }
+                                AppButton(onClick = { onSelectFlow(flowId) }) { Text("Open") }
+                                AppButton(onClick = { onDeleteFlow(flowId) }) { Text("Delete") }
                             }
                         }
                     }
@@ -91,9 +98,9 @@ fun FlowJobCatalogPage(
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 val flowId = flowLinks.firstOrNull { it.jobId == job.id }?.flowId
                                 if (flowId != null) {
-                                    Button(onClick = { onSelectFlow(flowId) }) { Text("Open Flow") }
+                                    AppButton(onClick = { onSelectFlow(flowId) }) { Text("Open Flow") }
                                 }
-                                Button(onClick = { onDeleteJob(job.id) }) { Text("Delete") }
+                                AppButton(onClick = { onDeleteJob(job.id) }) { Text("Delete") }
                             }
                         }
                     }

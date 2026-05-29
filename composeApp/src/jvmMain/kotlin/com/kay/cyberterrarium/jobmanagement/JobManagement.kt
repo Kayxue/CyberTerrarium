@@ -15,7 +15,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.kay.cyberterrarium.jobmanagement.components.FlowGraphView
 import com.kay.cyberterrarium.jobmanagement.components.FlowJobCatalogPage
 import com.kay.cyberterrarium.jobmanagement.components.GraphSelection
+import com.kay.cyberterrarium.jobmanagement.components.AppTextButton
 import com.kay.cyberterrarium.jobmanagement.components.JobManagementHeader
 import com.kay.cyberterrarium.jobmanagement.components.SelectionInspectorPanel
 import job.controller.JobController
@@ -148,13 +148,13 @@ fun JobManagement() {
     if (showCreateFlowDialog) {
         CreateFlowDialog(
             onDismiss = { showCreateFlowDialog = false },
-            onCreate = { flowId, stageId, stageName ->
+            onCreate = { flowName ->
                 scope.launch {
-                    withContext(Dispatchers.IO) {
-                        controller.createFlow(flowId, stageId, stageName)
+                    val createdFlowId = withContext(Dispatchers.IO) {
+                        controller.createFlow(flowName)
                     }
-                    message = "Flow created: $flowId"
-                    selectFlow(flowId)
+                    message = "Flow created: $flowName ($createdFlowId)"
+                    selectFlow(createdFlowId)
                     showCreateFlowDialog = false
                 }
             }
@@ -326,7 +326,20 @@ fun JobManagement() {
                                 jobsById = currentFlowJobsById,
                                 dependencies = currentFlowDependencies,
                                 selection = selection,
-                                onSelect = { selection = it }
+                                onSelect = { selection = it },
+                                onCreateDependency = { jobId, upstreamJobId ->
+                                    scope.launch {
+                                        try {
+                                            withContext(Dispatchers.IO) {
+                                                controller.saveJobDependency(jobId, upstreamJobId)
+                                            }
+                                            message = "Dependency added: $upstreamJobId -> $jobId"
+                                            refresh()
+                                        } catch (e: Exception) {
+                                            message = "Add dependency failed: ${e.message}"
+                                        }
+                                    }
+                                }
                             )
                         }
 
@@ -400,27 +413,28 @@ fun JobManagement() {
 @Composable
 private fun CreateFlowDialog(
     onDismiss: () -> Unit,
-    onCreate: (String, String, String) -> Unit
+    onCreate: (String) -> Unit
 ) {
-    var flowId by remember { mutableStateOf("demo-flow") }
-    var stageId by remember { mutableStateOf("demo-stage-1") }
-    var stageName by remember { mutableStateOf("Stage 1") }
+    var flowName by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Create Flow") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = flowId, onValueChange = { flowId = it }, label = { Text("Flow ID") })
-                OutlinedTextField(value = stageId, onValueChange = { stageId = it }, label = { Text("Initial Stage ID") })
-                OutlinedTextField(value = stageName, onValueChange = { stageName = it }, label = { Text("Initial Stage Name") })
+                Text("Flow ID will be auto-generated.")
+                OutlinedTextField(
+                    value = flowName,
+                    onValueChange = { flowName = it },
+                    label = { Text("Flow Name") }
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onCreate(flowId.trim(), stageId.trim(), stageName.trim()) }) { Text("Create") }
+            AppTextButton(onClick = { onCreate(flowName.trim()) }) { Text("Create") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            AppTextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }
@@ -448,12 +462,12 @@ private fun CreateStageDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
+            AppTextButton(onClick = {
                 val order = orderText.toIntOrNull() ?: 0
                 onCreate(flowId.trim(), stageId.trim(), stageName.trim(), order)
             }) { Text("Create") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 
@@ -488,12 +502,12 @@ private fun CreateJobDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
+            AppTextButton(onClick = {
                 val position = positionText.toIntOrNull() ?: defaultPosition
                 onCreate(flowId.trim(), stageId.trim(), title.trim(), description, language, script, position)
             }) { Text("Create") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 

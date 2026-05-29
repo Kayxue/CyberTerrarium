@@ -37,7 +37,7 @@ public interface IJobController {
         BarrierMode barrierMode,
         StageFailMode failMode
     );
-    void createFlow(String flowId, String initialStageId, String initialStageName);
+    String createFlow(String flowName);
     void deleteFlow(String flowId);
     void deleteJob(String jobId);
     void updateJob(String jobId, String title, String description, String stageId, boolean enabled);
