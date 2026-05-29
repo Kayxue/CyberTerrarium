@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -31,9 +29,11 @@ import job.model.stage.StageFailMode
 fun SelectionInspectorPanel(
     selectedJob: Job?,
     selectedStage: FlowStage?,
+    flowJobs: List<Job>,
+    flowStages: List<FlowStage>,
     selectedDependency: JobDependency?,
     onClose: () -> Unit,
-    onSaveJob: (String, String, String, String, Boolean) -> Unit,
+    onSaveJob: (String, String, String, String, Int, Boolean) -> Unit,
     onDeleteJob: (String) -> Unit,
     onSaveStage: (String, String, Int, BarrierMode, StageFailMode) -> Unit,
     onDeleteStage: (String) -> Unit,
@@ -56,6 +56,8 @@ fun SelectionInspectorPanel(
             if (selectedJob != null) {
                 JobInspector(
                     selectedJob = selectedJob,
+                    flowJobs = flowJobs,
+                    flowStages = flowStages,
                     onSave = onSaveJob,
                     onDelete = onDeleteJob
                 )
@@ -78,13 +80,24 @@ fun SelectionInspectorPanel(
 @Composable
 private fun JobInspector(
     selectedJob: Job,
-    onSave: (String, String, String, String, Boolean) -> Unit,
+    flowJobs: List<Job>,
+    flowStages: List<FlowStage>,
+    onSave: (String, String, String, String, Int, Boolean) -> Unit,
     onDelete: (String) -> Unit
 ) {
     var title by remember(selectedJob.id) { mutableStateOf(selectedJob.title) }
     var description by remember(selectedJob.id) { mutableStateOf(selectedJob.description) }
     var stageId by remember(selectedJob.id) { mutableStateOf(selectedJob.stageId) }
+    var orderValue by remember(selectedJob.id) { mutableStateOf(selectedJob.order) }
     var enabled by remember(selectedJob.id) { mutableStateOf(selectedJob.isEnabled) }
+
+    val orderOptions = remember(stageId, flowJobs, selectedJob.id) {
+        val ordersInStage = flowJobs.filter { it.stageId == stageId }.map { it.order }.toSet().toMutableSet()
+        ordersInStage.add(orderValue)
+        val next = (ordersInStage.maxOrNull() ?: 0) + 1
+        ordersInStage.add(next)
+        ordersInStage.toList().sorted()
+    }
 
     Text("Job", style = MaterialTheme.typography.titleSmall)
     Text("ID: ${selectedJob.id}")
@@ -94,13 +107,33 @@ private fun JobInspector(
         onValueChange = { description = it },
         label = { Text("Description") }
     )
-    OutlinedTextField(value = stageId, onValueChange = { stageId = it }, label = { Text("Stage ID") })
+    SelectDropdownField(
+        label = "Stage",
+        value = flowStages.firstOrNull { it.id == stageId }?.let { "${it.displayName} (${it.id})" } ?: stageId,
+        options = flowStages.map { "${it.displayName} (${it.id})" },
+        onSelect = { selectedText ->
+            val selected = flowStages.firstOrNull { "${it.displayName} (${it.id})" == selectedText }
+            if (selected != null) {
+                stageId = selected.id
+            }
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
+    SelectDropdownField(
+        label = "Order",
+        value = orderValue.toString(),
+        options = orderOptions.map { it.toString() },
+        onSelect = { selected ->
+            orderValue = selected.toIntOrNull() ?: orderValue
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Checkbox(checked = enabled, onCheckedChange = { enabled = it })
         Text("Enabled")
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AppButton(onClick = { onSave(selectedJob.id, title, description, stageId, enabled) }) { Text("Save") }
+        AppButton(onClick = { onSave(selectedJob.id, title, description, stageId, orderValue, enabled) }) { Text("Save") }
         AppButton(onClick = { onDelete(selectedJob.id) }) { Text("Delete") }
     }
 }
@@ -115,8 +148,6 @@ private fun StageInspector(
     var orderText by remember(selectedStage.id) { mutableStateOf(selectedStage.order.toString()) }
     var barrierMode by remember(selectedStage.id) { mutableStateOf(selectedStage.barrierMode) }
     var failMode by remember(selectedStage.id) { mutableStateOf(selectedStage.failMode) }
-    var barrierExpanded by remember(selectedStage.id) { mutableStateOf(false) }
-    var failExpanded by remember(selectedStage.id) { mutableStateOf(false) }
 
     Text("Stage", style = MaterialTheme.typography.titleSmall)
     Text("ID: ${selectedStage.id}")
@@ -128,40 +159,20 @@ private fun StageInspector(
         label = { Text("Order") }
     )
 
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AppButton(onClick = { barrierExpanded = true }) { Text("Barrier: ${barrierMode.name}") }
-        DropdownMenu(
-            expanded = barrierExpanded,
-            onDismissRequest = { barrierExpanded = false }
-        ) {
-            BarrierMode.values().forEach { mode ->
-                DropdownMenuItem(
-                    text = { Text(mode.name) },
-                    onClick = {
-                        barrierMode = mode
-                        barrierExpanded = false
-                    }
-                )
-            }
-        }
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AppButton(onClick = { failExpanded = true }) { Text("Fail Mode: ${failMode.name}") }
-        DropdownMenu(
-            expanded = failExpanded,
-            onDismissRequest = { failExpanded = false }
-        ) {
-            StageFailMode.values().forEach { mode ->
-                DropdownMenuItem(
-                    text = { Text(mode.name) },
-                    onClick = {
-                        failMode = mode
-                        failExpanded = false
-                    }
-                )
-            }
-        }
-    }
+    SelectDropdownField(
+        label = "Barrier Mode",
+        value = barrierMode.name,
+        options = BarrierMode.values().map { it.name },
+        onSelect = { selected -> barrierMode = BarrierMode.valueOf(selected) },
+        modifier = Modifier.fillMaxWidth()
+    )
+    SelectDropdownField(
+        label = "Fail Mode",
+        value = failMode.name,
+        options = StageFailMode.values().map { it.name },
+        onSelect = { selected -> failMode = StageFailMode.valueOf(selected) },
+        modifier = Modifier.fillMaxWidth()
+    )
 
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         AppButton(onClick = {

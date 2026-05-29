@@ -40,7 +40,10 @@ public interface IJobController {
     String createFlow(String flowName);
     void deleteFlow(String flowId);
     void deleteJob(String jobId);
-    void updateJob(String jobId, String title, String description, String stageId, boolean enabled);
+    void updateJob(String jobId, String title, String description, String stageId, int order, boolean enabled);
+    void updateFlowJobStageRelativePosition(String flowId, String jobId, double stageRelativeX, double stageRelativeY);
+    void updateFlowStageWidth(String stageId, double stageWidth);
+    void updateJobDependencyControlPoint(String jobId, String upstreamJobId, double bendX, double bendY);
     void saveJobDependency(String jobId, String upstreamJobId);
     void deleteJobDependency(String jobId, String upstreamJobId);
     void deleteFlowStage(String stageId);

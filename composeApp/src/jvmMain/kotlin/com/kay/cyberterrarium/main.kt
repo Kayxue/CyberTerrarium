@@ -16,12 +16,12 @@ fun main() {
             onCloseRequest = ::exitApplication,
             title = "Cyber Terrarium",
             state = WindowState(
-                width = 1280.dp,
+                width = 1360.dp,
                 height = 820.dp
             )
         ) {
             SideEffect {
-                window.minimumSize = Dimension(1180, 760)
+                window.minimumSize = Dimension(1360, 760)
             }
             App()
         }

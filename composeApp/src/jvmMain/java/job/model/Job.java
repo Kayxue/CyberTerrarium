@@ -17,12 +17,14 @@ public class Job {
     private FlowTrigger trigger;
     private List<JobDependency> dependencies;
     private boolean enabled;
+    private int order;
 
     public Job() {
         this.dependencies = new ArrayList<>();
         this.config = new JobConfig();
         this.trigger = new ManualTrigger();
         this.script = new JobScript();
+        this.order = 0;
     }
 
     public Job(
@@ -34,7 +36,8 @@ public class Job {
         JobConfig config,
         FlowTrigger trigger,
         List<JobDependency> dependencies,
-        boolean enabled
+        boolean enabled,
+        int order
     ) {
         this.id = id;
         this.stageId = stageId;
@@ -45,6 +48,7 @@ public class Job {
         this.trigger = trigger;
         this.dependencies = dependencies;
         this.enabled = enabled;
+        this.order = order;
     }
 
     public String getId() { return id; }
@@ -107,5 +111,13 @@ public class Job {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public int getOrder() {
+        return order;
+    }
+
+    public void setOrder(int order) {
+        this.order = order;
     }
 }

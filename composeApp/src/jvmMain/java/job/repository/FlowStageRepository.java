@@ -24,7 +24,7 @@ public class FlowStageRepository implements IFlowStageRepository {
     @Override
     public Optional<FlowStage> findOneById(String stageId) {
         String sql = """
-            SELECT id, flow_id, display_name, order_no, barrier_mode, fail_mode
+            SELECT id, flow_id, display_name, order_no, barrier_mode, fail_mode, stage_width
             FROM flow_stage
             WHERE id = ?
             """;
@@ -45,7 +45,7 @@ public class FlowStageRepository implements IFlowStageRepository {
     @Override
     public List<FlowStage> findManyByFlowId(String flowId) {
         String sql = """
-            SELECT id, flow_id, display_name, order_no, barrier_mode, fail_mode
+            SELECT id, flow_id, display_name, order_no, barrier_mode, fail_mode, stage_width
             FROM flow_stage
             WHERE flow_id = ?
             ORDER BY order_no ASC, id ASC
@@ -68,7 +68,7 @@ public class FlowStageRepository implements IFlowStageRepository {
     @Override
     public List<FlowStage> findAll() {
         String sql = """
-            SELECT id, flow_id, display_name, order_no, barrier_mode, fail_mode
+            SELECT id, flow_id, display_name, order_no, barrier_mode, fail_mode, stage_width
             FROM flow_stage
             ORDER BY order_no ASC, id ASC
             """;
@@ -88,8 +88,8 @@ public class FlowStageRepository implements IFlowStageRepository {
     @Override
     public void save(FlowStage stage) {
         String sql = """
-            INSERT INTO flow_stage(id, flow_id, display_name, order_no, barrier_mode, fail_mode)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO flow_stage(id, flow_id, display_name, order_no, barrier_mode, fail_mode, stage_width)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """;
         try (Connection conn = databaseFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -99,6 +99,7 @@ public class FlowStageRepository implements IFlowStageRepository {
             ps.setInt(4, stage.getOrder());
             ps.setString(5, stage.getBarrierMode().name());
             ps.setString(6, stage.getFailMode().name());
+            ps.setDouble(7, stage.getStageWidth());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to save job stage: " + stage.getId(), e);
@@ -109,7 +110,7 @@ public class FlowStageRepository implements IFlowStageRepository {
     public void updateOneById(String stageId, FlowStage stage) {
         String sql = """
             UPDATE flow_stage
-            SET flow_id = ?, display_name = ?, order_no = ?, barrier_mode = ?, fail_mode = ?
+            SET flow_id = ?, display_name = ?, order_no = ?, barrier_mode = ?, fail_mode = ?, stage_width = ?
             WHERE id = ?
             """;
         try (Connection conn = databaseFactory.getConnection();
@@ -119,7 +120,8 @@ public class FlowStageRepository implements IFlowStageRepository {
             ps.setInt(3, stage.getOrder());
             ps.setString(4, stage.getBarrierMode().name());
             ps.setString(5, stage.getFailMode().name());
-            ps.setString(6, stageId);
+            ps.setDouble(6, stage.getStageWidth());
+            ps.setString(7, stageId);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update one job stage: " + stageId, e);
@@ -146,6 +148,7 @@ public class FlowStageRepository implements IFlowStageRepository {
         stage.setOrder(rs.getInt("order_no"));
         stage.setBarrierMode(BarrierMode.valueOf(rs.getString("barrier_mode")));
         stage.setFailMode(StageFailMode.valueOf(rs.getString("fail_mode")));
+        stage.setStageWidth(rs.getDouble("stage_width"));
         return stage;
     }
 }

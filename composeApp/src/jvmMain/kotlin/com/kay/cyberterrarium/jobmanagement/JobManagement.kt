@@ -29,6 +29,7 @@ import com.kay.cyberterrarium.jobmanagement.components.FlowJobCatalogPage
 import com.kay.cyberterrarium.jobmanagement.components.GraphSelection
 import com.kay.cyberterrarium.jobmanagement.components.AppTextButton
 import com.kay.cyberterrarium.jobmanagement.components.JobManagementHeader
+import com.kay.cyberterrarium.jobmanagement.components.SelectDropdownField
 import com.kay.cyberterrarium.jobmanagement.components.SelectionInspectorPanel
 import job.controller.JobController
 import job.model.Job
@@ -192,6 +193,7 @@ fun JobManagement() {
         CreateJobDialog(
             defaultFlowId = defaultFlowId,
             defaultStageId = defaultStageId,
+            stageOptions = currentFlowStages,
             defaultPosition = controller.suggestNextPosition(defaultFlowId),
             onDismiss = { showCreateJobDialog = false },
             onCreate = { flowId, stageId, title, description, languageText, script, position ->
@@ -317,8 +319,8 @@ fun JobManagement() {
                 }
 
                 JobManagementPage.GRAPH -> {
-                    Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Box(modifier = Modifier.fillMaxSize()) {
                             FlowGraphView(
                                 selectedFlowId = selectedFlowId,
                                 flowStages = currentFlowStages,
@@ -339,69 +341,187 @@ fun JobManagement() {
                                             message = "Add dependency failed: ${e.message}"
                                         }
                                     }
+                                },
+                                onDependencyRejected = { reason ->
+                                    message = reason
+                                },
+                                onDependencyControlPointChanged = { jobId, upstreamJobId, bendXDp, bendYDp ->
+                                    currentFlowDependencies = currentFlowDependencies.map { dependency ->
+                                        if (dependency.jobId == jobId && dependency.upstreamJobId == upstreamJobId) {
+                                            JobDependency(jobId, upstreamJobId, bendXDp, bendYDp)
+                                        } else {
+                                            dependency
+                                        }
+                                    }
+                                    scope.launch {
+                                        try {
+                                            withContext(Dispatchers.IO) {
+                                                controller.updateJobDependencyControlPoint(jobId, upstreamJobId, bendXDp, bendYDp)
+                                            }
+                                        } catch (_: Exception) {
+                                            // keep silent for dependency bend persistence failure
+                                        }
+                                    }
+                                },
+                                onStageWidthChanged = { stageId, stageWidthDp ->
+                                    allFlowStages = allFlowStages.map { stage ->
+                                        if (stage.id == stageId) {
+                                            FlowStage(
+                                                stage.id,
+                                                stage.flowId,
+                                                stage.displayName,
+                                                stage.order,
+                                                stage.barrierMode,
+                                                stage.failMode,
+                                                stageWidthDp
+                                            )
+                                        } else {
+                                            stage
+                                        }
+                                    }
+                                    scope.launch {
+                                        try {
+                                            withContext(Dispatchers.IO) {
+                                                controller.updateFlowStageWidth(stageId, stageWidthDp)
+                                            }
+                                        } catch (_: Exception) {
+                                            // keep silent for stage width persistence failure
+                                        }
+                                    }
+                                },
+                                onJobOrderChanged = { jobId, targetStageId, targetOrder ->
+                                    val existing = currentFlowJobsById[jobId] ?: return@FlowGraphView
+                                    allJobs = allJobs.map { job ->
+                                        if (job.id == jobId) {
+                                            Job(
+                                                job.id,
+                                                targetStageId,
+                                                job.title,
+                                                job.description,
+                                                job.script,
+                                                job.config,
+                                                job.trigger,
+                                                job.dependencies,
+                                                job.isEnabled,
+                                                targetOrder
+                                            )
+                                        } else {
+                                            job
+                                        }
+                                    }
+                                    scope.launch {
+                                        try {
+                                            withContext(Dispatchers.IO) {
+                                                controller.updateJob(
+                                                    jobId,
+                                                    existing.title,
+                                                    existing.description,
+                                                    targetStageId,
+                                                    targetOrder,
+                                                    existing.isEnabled
+                                                )
+                                            }
+                                        } catch (_: Exception) {
+                                            // keep silent for drag reorder persistence failure
+                                        }
+                                    }
+                                },
+                                onJobPositionChanged = { jobId, stageRelativeX, stageRelativeY ->
+                                    val flowId = selectedFlowId ?: return@FlowGraphView
+                                    allFlowLinks = allFlowLinks.map { link ->
+                                        if (link.flowId == flowId && link.jobId == jobId) {
+                                            FlowJobLink(
+                                                link.flowId,
+                                                link.jobId,
+                                                link.position,
+                                                stageRelativeX,
+                                                stageRelativeY
+                                            )
+                                        } else {
+                                            link
+                                        }
+                                    }
+                                    scope.launch {
+                                        try {
+                                            withContext(Dispatchers.IO) {
+                                                controller.updateFlowJobStageRelativePosition(
+                                                    flowId,
+                                                    jobId,
+                                                    stageRelativeX,
+                                                    stageRelativeY
+                                                )
+                                            }
+                                        } catch (_: Exception) {
+                                            // keep silent for drag persistence failure to avoid noisy UI
+                                        }
+                                    }
                                 }
                             )
                         }
 
                         if (selection != null) {
-                            SelectionInspectorPanel(
-                                selectedJob = selectedJob(),
-                                selectedStage = selectedStage(),
-                                selectedDependency = selectedDependency(),
-                                onClose = { selection = null },
-                                onSaveJob = { jobId, title, description, stageId, enabled ->
-                                    scope.launch {
-                                        withContext(Dispatchers.IO) {
-                                            controller.updateJob(jobId, title, description, stageId, enabled)
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.TopEnd) {
+                                SelectionInspectorPanel(
+                                    selectedJob = selectedJob(),
+                                    selectedStage = selectedStage(),
+                                    flowJobs = currentFlowJobsById.values.toList(),
+                                    flowStages = currentFlowStages,
+                                    selectedDependency = selectedDependency(),
+                                    onClose = { selection = null },
+                                    onSaveJob = { jobId, title, description, stageId, order, enabled ->
+                                        scope.launch {
+                                            withContext(Dispatchers.IO) {
+                                                controller.updateJob(jobId, title, description, stageId, order, enabled)
+                                            }
+                                            message = "Job updated: $jobId"
+                                            refresh()
                                         }
-                                        message = "Job updated: $jobId"
-                                        refresh()
-                                    }
-                                },
-                                onDeleteJob = { jobId ->
-                                    scope.launch {
-                                        withContext(Dispatchers.IO) { controller.deleteJob(jobId) }
-                                        message = "Job deleted: $jobId"
-                                        selection = null
-                                        refresh()
-                                    }
-                                },
-                                onSaveStage = { stageId, name, order, barrierMode, failMode ->
-                                    val flowId = selectedFlowId ?: return@SelectionInspectorPanel
-                                    scope.launch {
-                                        withContext(Dispatchers.IO) {
-                                            controller.createOrUpdateFlowStage(
-                                                flowId,
-                                                stageId,
-                                                name,
-                                                order,
-                                                barrierMode,
-                                                failMode
-                                            )
+                                    },
+                                    onDeleteJob = { jobId ->
+                                        scope.launch {
+                                            withContext(Dispatchers.IO) { controller.deleteJob(jobId) }
+                                            message = "Job deleted: $jobId"
+                                            selection = null
+                                            refresh()
                                         }
-                                        message = "Stage updated: $stageId"
-                                        refresh()
-                                    }
-                                },
-                                onDeleteStage = { stageId ->
-                                    scope.launch {
-                                        withContext(Dispatchers.IO) { controller.deleteFlowStage(stageId) }
-                                        message = "Stage deleted: $stageId"
-                                        selection = null
-                                        refresh()
-                                    }
-                                },
-                                onDeleteDependency = { jobId, upstreamJobId ->
-                                    scope.launch {
-                                        withContext(Dispatchers.IO) {
-                                            controller.deleteJobDependency(jobId, upstreamJobId)
+                                    },
+                                    onSaveStage = { stageId, name, order, barrierMode, failMode ->
+                                        val flowId = selectedFlowId ?: return@SelectionInspectorPanel
+                                        scope.launch {
+                                            withContext(Dispatchers.IO) {
+                                                controller.createOrUpdateFlowStage(
+                                                    flowId,
+                                                    stageId,
+                                                    name,
+                                                    order,
+                                                    barrierMode,
+                                                    failMode
+                                                )
+                                            }
+                                            message = "Stage updated: $stageId"
+                                            refresh()
                                         }
-                                        message = "Dependency deleted: $upstreamJobId -> $jobId"
-                                        selection = null
-                                        refresh()
+                                    },
+                                    onDeleteStage = { stageId ->
+                                        scope.launch {
+                                            withContext(Dispatchers.IO) { controller.deleteFlowStage(stageId) }
+                                            message = "Stage deleted: $stageId"
+                                            selection = null
+                                            refresh()
+                                        }
+                                    },
+                                    onDeleteDependency = { jobId, upstreamJobId ->
+                                        scope.launch {
+                                            withContext(Dispatchers.IO) {
+                                                controller.deleteJobDependency(jobId, upstreamJobId)
+                                            }
+                                            message = "Dependency deleted: $upstreamJobId -> $jobId"
+                                            selection = null
+                                            refresh()
+                                        }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
@@ -475,6 +595,7 @@ private fun CreateStageDialog(
 private fun CreateJobDialog(
     defaultFlowId: String,
     defaultStageId: String,
+    stageOptions: List<FlowStage>,
     defaultPosition: Int,
     onDismiss: () -> Unit,
     onCreate: (String, String, String, String, String, String, Int) -> Unit
@@ -493,7 +614,18 @@ private fun CreateJobDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = flowId, onValueChange = { flowId = it }, label = { Text("Flow ID") })
-                OutlinedTextField(value = stageId, onValueChange = { stageId = it }, label = { Text("Stage ID") })
+                SelectDropdownField(
+                    label = "Stage",
+                    value = stageOptions.firstOrNull { it.id == stageId }?.let { "${it.displayName} (${it.id})" } ?: stageId,
+                    options = stageOptions.map { "${it.displayName} (${it.id})" },
+                    onSelect = { selectedText ->
+                        val selected = stageOptions.firstOrNull { "${it.displayName} (${it.id})" == selectedText }
+                        if (selected != null) {
+                            stageId = selected.id
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") })
                 OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") })
                 OutlinedTextField(value = language, onValueChange = { language = it }, label = { Text("Language") })

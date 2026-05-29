@@ -68,6 +68,7 @@ fun JobManagementHeader(
                     maxWorkersText = maxWorkersText,
                     onMaxWorkersChange = onMaxWorkersChange
                 )
+                Spacer(modifier = Modifier.width(20.dp))
                 Spacer(modifier = Modifier.weight(1f))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
