@@ -42,8 +42,11 @@ fun App() {
     MaterialTheme {
         Scaffold {
             Row(modifier = Modifier.fillMaxSize().width(32.dp)) {
-
-                NavigationRail(modifier = Modifier.fillMaxHeight()) {
+                NavigationRail(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxHeight()
+                ) {
                     Spacer(Modifier.weight(1f))
 
                     items.forEachIndexed { index, item ->
