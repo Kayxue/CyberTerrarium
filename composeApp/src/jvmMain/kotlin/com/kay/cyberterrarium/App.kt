@@ -61,7 +61,14 @@ fun App() {
                             label = { Text(item) },
                             selected = selectedItem == index,
                             modifier = Modifier.padding(top = if (index == 0) 16.dp else 8.dp),
-                            onClick = { selectedItem = index }
+                            onClick = { selectedItem = index },
+                            colors = NavigationRailItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         )
                     }
 
