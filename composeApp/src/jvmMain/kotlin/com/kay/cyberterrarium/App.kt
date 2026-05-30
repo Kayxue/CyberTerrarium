@@ -40,40 +40,42 @@ fun App() {
     )
 
     MaterialTheme {
-        Row(modifier = Modifier.fillMaxSize().width(32.dp)) {
+        Scaffold {
+            Row(modifier = Modifier.fillMaxSize().width(32.dp)) {
 
-            NavigationRail(modifier = Modifier.fillMaxHeight()) {
-                Spacer(Modifier.weight(1f))
+                NavigationRail(modifier = Modifier.fillMaxHeight()) {
+                    Spacer(Modifier.weight(1f))
 
-                items.forEachIndexed { index, item ->
-                    NavigationRailItem(
-                        icon = {
-                            Icon(
-                                imageVector = if (selectedItem == index) selectedIcons[index] else unselectedIcons[index],
-                                contentDescription = item,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        },
-                        label = { Text(item) },
-                        selected = selectedItem == index,
-                        modifier = Modifier.padding(top = if (index == 0) 16.dp else 8.dp),
-                        onClick = { selectedItem = index }
-                    )
+                    items.forEachIndexed { index, item ->
+                        NavigationRailItem(
+                            icon = {
+                                Icon(
+                                    imageVector = if (selectedItem == index) selectedIcons[index] else unselectedIcons[index],
+                                    contentDescription = item,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = { Text(item) },
+                            selected = selectedItem == index,
+                            modifier = Modifier.padding(top = if (index == 0) 16.dp else 8.dp),
+                            onClick = { selectedItem = index }
+                        )
+                    }
+
+                    Spacer(Modifier.weight(1f))
                 }
 
-                Spacer(Modifier.weight(1f))
-            }
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize(),
-            ) {
-                when (selectedItem) {
-                    0 -> Home()
-                    1 -> Stats()
-                    2 -> Processes()
-                    3 -> JobManagement()
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                ) {
+                    when (selectedItem) {
+                        0 -> Home()
+                        1 -> Stats()
+                        2 -> Processes()
+                        3 -> JobManagement()
+                    }
                 }
             }
         }
