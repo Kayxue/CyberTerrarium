@@ -16,8 +16,8 @@ fun main() {
             onCloseRequest = ::exitApplication,
             title = "Cyber Terrarium",
             state = WindowState(
-                width = 1520.dp,
-                height = 820.dp
+                width = 1480.dp,
+                height = 760.dp
             )
         ) {
             SideEffect {
