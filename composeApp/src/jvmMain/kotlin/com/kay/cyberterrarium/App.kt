@@ -6,8 +6,10 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.QueryStats
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -21,18 +23,20 @@ import page.Stats
 fun App() {
     var selectedItem by remember { mutableIntStateOf(0) }
 
-    val items = listOf("Home", "Stats", "Process")
+    val items = listOf("Home", "Stats", "Process", "Jobs")
 
     val selectedIcons = listOf(
         Icons.Filled.Home,
         Icons.Filled.QueryStats,
-        Icons.AutoMirrored.Filled.List
+        Icons.AutoMirrored.Filled.List,
+        Icons.Filled.Settings
     )
 
     val unselectedIcons = listOf(
         Icons.Outlined.Home,
         Icons.Outlined.QueryStats,
-        Icons.AutoMirrored.Outlined.List
+        Icons.AutoMirrored.Outlined.List,
+        Icons.Outlined.Settings
     )
 
     MaterialTheme {
@@ -65,25 +69,11 @@ fun App() {
                     .weight(1f)
                     .fillMaxSize(),
             ) {
-                when (selectedItem){
+                when (selectedItem) {
                     0 -> Home()
                     1 -> Stats()
                     2 -> Processes()
-                when (selectedItem) {
-                    2 -> JobManagement()
-                    else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = items[selectedItem],
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Icon(
-                            imageVector = selectedIcons[selectedItem],
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    3 -> JobManagement()
                 }
             }
         }

@@ -1,38 +1,15 @@
 package com.kay.cyberterrarium.jobmanagement
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.kay.cyberterrarium.jobmanagement.components.FlowGraphView
-import com.kay.cyberterrarium.jobmanagement.components.FlowJobCatalogPage
-import com.kay.cyberterrarium.jobmanagement.components.FlowRunResultsPage
-import com.kay.cyberterrarium.jobmanagement.components.GraphSelection
-import com.kay.cyberterrarium.jobmanagement.components.AppTextButton
-import com.kay.cyberterrarium.jobmanagement.components.JobScriptEditorPage
-import com.kay.cyberterrarium.jobmanagement.components.JobManagementHeader
-import com.kay.cyberterrarium.jobmanagement.components.SelectDropdownField
-import com.kay.cyberterrarium.jobmanagement.components.SelectionInspectorPanel
+import com.kay.cyberterrarium.jobmanagement.components.*
 import job.controller.JobController
 import job.model.Job
 import job.model.JobDependency
@@ -150,6 +127,7 @@ fun JobManagement() {
         is GraphSelection.DependencySelection -> currentFlowDependencies.firstOrNull {
             it.jobId == selected.jobId && it.upstreamJobId == selected.upstreamJobId
         }
+
         else -> null
     }
 
@@ -241,13 +219,6 @@ fun JobManagement() {
             .safeContentPadding()
             .padding(10.dp)
     ) {
-        Spacer(
-            modifier = Modifier
-                .width(64.dp)
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f))
-        )
-
         Column(
             modifier = Modifier
                 .padding(start = 12.dp)
@@ -365,7 +336,12 @@ fun JobManagement() {
                                     scope.launch {
                                         try {
                                             withContext(Dispatchers.IO) {
-                                                controller.updateJobDependencyControlPoint(jobId, upstreamJobId, bendXDp, bendYDp)
+                                                controller.updateJobDependencyControlPoint(
+                                                    jobId,
+                                                    upstreamJobId,
+                                                    bendXDp,
+                                                    bendYDp
+                                                )
                                             }
                                         } catch (_: Exception) {
                                             // keep silent for dependency bend persistence failure
@@ -469,7 +445,10 @@ fun JobManagement() {
                         }
 
                         if (selection != null) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.TopEnd) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = androidx.compose.ui.Alignment.TopEnd
+                            ) {
                                 SelectionInspectorPanel(
                                     selectedJob = selectedJob(),
                                     selectedStage = selectedStage(),
@@ -680,7 +659,8 @@ private fun CreateJobDialog(
                 OutlinedTextField(value = flowId, onValueChange = { flowId = it }, label = { Text("Flow ID") })
                 SelectDropdownField(
                     label = "Stage",
-                    value = stageOptions.firstOrNull { it.id == stageId }?.let { "${it.displayName} (${it.id})" } ?: stageId,
+                    value = stageOptions.firstOrNull { it.id == stageId }?.let { "${it.displayName} (${it.id})" }
+                        ?: stageId,
                     options = stageOptions.map { "${it.displayName} (${it.id})" },
                     onSelect = { selectedText ->
                         val selected = stageOptions.firstOrNull { "${it.displayName} (${it.id})" == selectedText }
@@ -691,9 +671,15 @@ private fun CreateJobDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") })
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") })
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") })
                 OutlinedTextField(value = language, onValueChange = { language = it }, label = { Text("Language") })
-                OutlinedTextField(value = positionText, onValueChange = { positionText = it }, label = { Text("Position") })
+                OutlinedTextField(
+                    value = positionText,
+                    onValueChange = { positionText = it },
+                    label = { Text("Position") })
                 OutlinedTextField(value = script, onValueChange = { script = it }, label = { Text("Script") })
             }
         },
