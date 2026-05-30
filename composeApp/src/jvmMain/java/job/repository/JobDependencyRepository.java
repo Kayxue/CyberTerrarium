@@ -23,7 +23,7 @@ public class JobDependencyRepository implements IJobDependencyRepository {
     @Override
     public Optional<JobDependency> findOneById(String jobId, String upstreamJobId) {
         String sql = """
-            SELECT job_id, upstream_job_id
+            SELECT job_id, upstream_job_id, bend_x, bend_y
             FROM job_dependency
             WHERE job_id = ? AND upstream_job_id = ?
             """;
@@ -48,7 +48,7 @@ public class JobDependencyRepository implements IJobDependencyRepository {
     @Override
     public List<JobDependency> findAll() {
         String sql = """
-            SELECT job_id, upstream_job_id
+            SELECT job_id, upstream_job_id, bend_x, bend_y
             FROM job_dependency
             ORDER BY job_id, upstream_job_id
             """;
@@ -82,7 +82,7 @@ public class JobDependencyRepository implements IJobDependencyRepository {
 
         String placeholders = String.join(", ", java.util.Collections.nCopies(normalized.size(), "?"));
         String sql = """
-            SELECT job_id, upstream_job_id
+            SELECT job_id, upstream_job_id, bend_x, bend_y
             FROM job_dependency
             WHERE job_id IN (%s)
             ORDER BY job_id, upstream_job_id
@@ -109,13 +109,15 @@ public class JobDependencyRepository implements IJobDependencyRepository {
     @Override
     public void save(String jobId, JobDependency dependency) {
         String sql = """
-            INSERT INTO job_dependency(job_id, upstream_job_id)
-            VALUES (?, ?)
+            INSERT INTO job_dependency(job_id, upstream_job_id, bend_x, bend_y)
+            VALUES (?, ?, ?, ?)
             """;
         try (Connection conn = databaseFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, jobId);
             ps.setString(2, dependency.getUpstreamJobId());
+            ps.setDouble(3, dependency.getBendX());
+            ps.setDouble(4, dependency.getBendY());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to save job dependency: " + jobId, e);
@@ -126,18 +128,42 @@ public class JobDependencyRepository implements IJobDependencyRepository {
     public void updateOneById(String jobId, String upstreamJobId, JobDependency dependency) {
         String sql = """
             UPDATE job_dependency
-            SET upstream_job_id = ?
+            SET upstream_job_id = ?, bend_x = ?, bend_y = ?
             WHERE job_id = ? AND upstream_job_id = ?
             """;
         try (Connection conn = databaseFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, dependency.getUpstreamJobId());
-            ps.setString(2, jobId);
-            ps.setString(3, upstreamJobId);
+            ps.setDouble(2, dependency.getBendX());
+            ps.setDouble(3, dependency.getBendY());
+            ps.setString(4, jobId);
+            ps.setString(5, upstreamJobId);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException(
                 "Failed to update one job dependency: " + jobId + " -> " + upstreamJobId,
+                e
+            );
+        }
+    }
+
+    @Override
+    public void updateControlPoint(String jobId, String upstreamJobId, double bendX, double bendY) {
+        String sql = """
+            UPDATE job_dependency
+            SET bend_x = ?, bend_y = ?
+            WHERE job_id = ? AND upstream_job_id = ?
+            """;
+        try (Connection conn = databaseFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, bendX);
+            ps.setDouble(2, bendY);
+            ps.setString(3, jobId);
+            ps.setString(4, upstreamJobId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(
+                "Failed to update dependency control point: " + jobId + " -> " + upstreamJobId,
                 e
             );
         }
@@ -163,6 +189,8 @@ public class JobDependencyRepository implements IJobDependencyRepository {
         JobDependency dependency = new JobDependency();
         dependency.setJobId(rs.getString("job_id"));
         dependency.setUpstreamJobId(rs.getString("upstream_job_id"));
+        dependency.setBendX(rs.getDouble("bend_x"));
+        dependency.setBendY(rs.getDouble("bend_y"));
         return dependency;
     }
 }

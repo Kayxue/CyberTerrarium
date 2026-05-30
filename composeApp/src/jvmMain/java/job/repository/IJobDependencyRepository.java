@@ -11,5 +11,6 @@ public interface IJobDependencyRepository {
     List<JobDependency> findAll();
     void save(String jobId, JobDependency dependency);
     void updateOneById(String jobId, String upstreamJobId, JobDependency dependency);
+    void updateControlPoint(String jobId, String upstreamJobId, double bendX, double bendY);
     void deleteOneById(String jobId, String upstreamJobId);
 }

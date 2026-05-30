@@ -7,10 +7,12 @@ public class FlowStage {
     private int order;
     private BarrierMode barrierMode;
     private StageFailMode failMode;
+    private double stageWidth;
 
     public FlowStage() {
         this.barrierMode = BarrierMode.SOFT;
         this.failMode = StageFailMode.STOP;
+        this.stageWidth = -1d;
     }
 
     public FlowStage(
@@ -21,12 +23,25 @@ public class FlowStage {
         BarrierMode barrierMode,
         StageFailMode failMode
     ) {
+        this(id, flowId, displayName, order, barrierMode, failMode, -1d);
+    }
+
+    public FlowStage(
+        String id,
+        String flowId,
+        String displayName,
+        int order,
+        BarrierMode barrierMode,
+        StageFailMode failMode,
+        double stageWidth
+    ) {
         this.id = id;
         this.flowId = flowId;
         this.displayName = displayName;
         this.order = order;
         this.barrierMode = barrierMode;
         this.failMode = failMode;
+        this.stageWidth = stageWidth;
     }
 
     public String getId() {
@@ -75,5 +90,13 @@ public class FlowStage {
 
     public void setFailMode(StageFailMode failMode) {
         this.failMode = failMode;
+    }
+
+    public double getStageWidth() {
+        return stageWidth;
+    }
+
+    public void setStageWidth(double stageWidth) {
+        this.stageWidth = stageWidth;
     }
 }
