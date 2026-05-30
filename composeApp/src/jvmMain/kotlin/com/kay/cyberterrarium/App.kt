@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.kay.cyberterrarium.jobmanagement.JobManagement
 import page.Home
 import page.Processes
 import page.Stats
@@ -68,6 +69,21 @@ fun App() {
                     0 -> Home()
                     1 -> Stats()
                     2 -> Processes()
+                when (selectedItem) {
+                    2 -> JobManagement()
+                    else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = items[selectedItem],
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Icon(
+                            imageVector = selectedIcons[selectedItem],
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }
