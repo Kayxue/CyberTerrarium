@@ -26,7 +26,7 @@ public class JobRepository implements IJobRepository {
     @Override
     public Optional<Job> findOneById(String id) {
         String sql = """
-            SELECT id, stage_id, title, description, script_language, script_content, enabled
+            SELECT id, stage_id, order_no, title, description, script_language, script_content, enabled
             FROM job
             WHERE id = ?
             """;
@@ -62,7 +62,7 @@ public class JobRepository implements IJobRepository {
 
         String placeholders = String.join(", ", java.util.Collections.nCopies(normalized.size(), "?"));
         String sql = """
-            SELECT id, stage_id, title, description, script_language, script_content, enabled
+            SELECT id, stage_id, order_no, title, description, script_language, script_content, enabled
             FROM job
             WHERE id IN (%s)
             """.formatted(placeholders);
@@ -87,7 +87,7 @@ public class JobRepository implements IJobRepository {
     @Override
     public List<Job> findAll() {
         String sql = """
-            SELECT id, stage_id, title, description, script_language, script_content, enabled
+            SELECT id, stage_id, order_no, title, description, script_language, script_content, enabled
             FROM job
             ORDER BY created_at DESC
             """;
@@ -107,19 +107,20 @@ public class JobRepository implements IJobRepository {
     @Override
     public void save(Job job) {
         String sql = """
-            INSERT INTO job(id, stage_id, title, description, script_language, script_content, enabled)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO job(id, stage_id, order_no, title, description, script_language, script_content, enabled)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """;
         try (Connection conn = databaseFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nullToEmpty(job.getId()));
             ps.setString(2, nullToEmpty(job.getStageId()));
-            ps.setString(3, nullToEmpty(job.getTitle()));
-            ps.setString(4, nullToEmpty(job.getDescription()));
+            ps.setInt(3, job.getOrder());
+            ps.setString(4, nullToEmpty(job.getTitle()));
+            ps.setString(5, nullToEmpty(job.getDescription()));
             JobScript script = job.getScript() == null ? new JobScript() : job.getScript();
-            ps.setString(5, script.getLanguage().name());
-            ps.setString(6, nullToEmpty(script.getContent()));
-            ps.setInt(7, job.isEnabled() ? 1 : 0);
+            ps.setString(6, script.getLanguage().name());
+            ps.setString(7, nullToEmpty(script.getContent()));
+            ps.setInt(8, job.isEnabled() ? 1 : 0);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to save job: " + job.getId(), e);
@@ -130,19 +131,20 @@ public class JobRepository implements IJobRepository {
     public void updateOneById(String id, Job job) {
         String sql = """
             UPDATE job
-            SET stage_id = ?, title = ?, description = ?, script_language = ?, script_content = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
+            SET stage_id = ?, order_no = ?, title = ?, description = ?, script_language = ?, script_content = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
             """;
         try (Connection conn = databaseFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             JobScript script = job.getScript() == null ? new JobScript() : job.getScript();
             ps.setString(1, nullToEmpty(job.getStageId()));
-            ps.setString(2, nullToEmpty(job.getTitle()));
-            ps.setString(3, nullToEmpty(job.getDescription()));
-            ps.setString(4, script.getLanguage().name());
-            ps.setString(5, nullToEmpty(script.getContent()));
-            ps.setInt(6, job.isEnabled() ? 1 : 0);
-            ps.setString(7, id);
+            ps.setInt(2, job.getOrder());
+            ps.setString(3, nullToEmpty(job.getTitle()));
+            ps.setString(4, nullToEmpty(job.getDescription()));
+            ps.setString(5, script.getLanguage().name());
+            ps.setString(6, nullToEmpty(script.getContent()));
+            ps.setInt(7, job.isEnabled() ? 1 : 0);
+            ps.setString(8, id);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update job: " + id, e);
@@ -165,6 +167,7 @@ public class JobRepository implements IJobRepository {
         Job job = new Job();
         job.setId(rs.getString("id"));
         job.setStageId(rs.getString("stage_id"));
+        job.setOrder(rs.getInt("order_no"));
         job.setTitle(rs.getString("title"));
         job.setDescription(rs.getString("description"));
         ScriptLanguage language = ScriptLanguage.valueOf(rs.getString("script_language"));

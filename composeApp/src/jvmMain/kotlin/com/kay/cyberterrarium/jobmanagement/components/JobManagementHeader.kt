@@ -1,12 +1,15 @@
 package com.kay.cyberterrarium.jobmanagement.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -22,6 +25,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun JobManagementHeader(
     currentPageIsGraph: Boolean,
+    currentPageIsCatalog: Boolean,
+    currentPageIsResults: Boolean,
     selectedFlowId: String?,
     flowIds: List<String>,
     maxWorkersText: String,
@@ -33,52 +38,89 @@ fun JobManagementHeader(
     onOpenCreateStage: () -> Unit,
     onRunFlow: () -> Unit,
     onRefresh: () -> Unit,
-    onTogglePage: () -> Unit
+    onOpenCatalog: () -> Unit,
+    onOpenResults: () -> Unit,
+    onOpenGraph: () -> Unit
 ) {
-    var flowMenuExpanded by remember { mutableStateOf(false) }
+    var createExpanded by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(scrollState)
+            .widthIn(min = 1280.dp)
+            .padding(bottom = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Job Management", style = MaterialTheme.typography.headlineSmall)
-            Button(onClick = { flowMenuExpanded = true }) {
-                Text(if (selectedFlowId.isNullOrBlank()) "Select Flow" else selectedFlowId)
-            }
-            DropdownMenu(
-                expanded = flowMenuExpanded,
-                onDismissRequest = { flowMenuExpanded = false }
-            ) {
-                flowIds.forEach { flowId ->
-                    DropdownMenuItem(
-                        text = { Text(flowId) },
-                        onClick = {
-                            flowMenuExpanded = false
-                            onSelectFlow(flowId)
-                        }
-                    )
+        Text("Job Management", style = MaterialTheme.typography.headlineSmall)
+
+        SelectDropdownField(
+            label = "Flow",
+            value = selectedFlowId ?: "Select Flow",
+            options = flowIds.ifEmpty { listOf("No Flows") },
+            onSelect = { selected ->
+                if (selected != "No Flows") {
+                    onSelectFlow(selected)
                 }
-            }
-            Button(onClick = onClearFlow) { Text("Clear") }
+            },
+            modifier = Modifier.width(230.dp)
+        )
+
+        OutlinedTextField(
+            modifier = Modifier.width(118.dp),
+            value = maxWorkersText,
+            onValueChange = onMaxWorkersChange,
+            singleLine = true,
+            label = { Text("Workers") }
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        AppButton(
+            onClick = { createExpanded = !createExpanded },
+            variant = AppButtonVariant.MUTED,
+            modifier = Modifier.widthIn(min = 44.dp, max = 52.dp)
+        ) { Text("+") }
+
+        if (createExpanded) {
+            AppButton(onClick = onOpenCreateFlow, variant = AppButtonVariant.MUTED) { Text("Flow") }
+            AppButton(onClick = onOpenCreateStage, variant = AppButtonVariant.MUTED) { Text("Stage") }
+            AppButton(onClick = onOpenCreateJob, variant = AppButtonVariant.MUTED) { Text("Job") }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = maxWorkersText,
-                onValueChange = onMaxWorkersChange,
-                singleLine = true,
-                label = { Text("Workers") }
-            )
-            Button(onClick = onOpenCreateFlow) { Text("New Flow") }
-            Button(onClick = onOpenCreateStage) { Text("New Stage") }
-            Button(onClick = onOpenCreateJob) { Text("New Job") }
-            Button(onClick = onRunFlow, enabled = !selectedFlowId.isNullOrBlank()) { Text("Run") }
-            Button(onClick = onRefresh) { Text("Refresh") }
-            Button(onClick = onTogglePage) {
-                Text(if (currentPageIsGraph) "All Flows / Jobs" else "Back To Graph")
-            }
+        AppButton(
+            onClick = onRunFlow,
+            enabled = !selectedFlowId.isNullOrBlank(),
+            variant = AppButtonVariant.SUCCESS
+        ) { Text("Run") }
+
+        AppButton(
+            onClick = onOpenResults,
+            variant = if (currentPageIsResults) AppButtonVariant.PRIMARY else AppButtonVariant.DEFAULT
+        ) { Text("Results") }
+
+        AppButton(
+            onClick = onRefresh,
+            variant = AppButtonVariant.DEFAULT
+        ) { Text("Refresh") }
+
+        AppButton(
+            onClick = if (currentPageIsCatalog) onOpenGraph else onOpenCatalog,
+            variant = if (currentPageIsCatalog) AppButtonVariant.PRIMARY else AppButtonVariant.DEFAULT
+        ) { Text(if (currentPageIsCatalog) "Graph" else "Catalog") }
+
+        if (!currentPageIsGraph) {
+            AppButton(
+                onClick = onOpenGraph,
+                variant = AppButtonVariant.MUTED
+            ) { Text("Back") }
         }
+
+        AppButton(
+            onClick = onClearFlow,
+            variant = AppButtonVariant.DANGER
+        ) { Text("Clear") }
     }
 }

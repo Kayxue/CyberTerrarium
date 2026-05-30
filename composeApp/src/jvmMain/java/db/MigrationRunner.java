@@ -14,6 +14,7 @@ public final class MigrationRunner {
             CREATE TABLE IF NOT EXISTS job (
                 id TEXT PRIMARY KEY,
                 stage_id TEXT NOT NULL,
+                order_no INTEGER NOT NULL DEFAULT 0,
                 title TEXT NOT NULL DEFAULT '',
                 description TEXT NOT NULL DEFAULT '',
                 script_language TEXT NOT NULL DEFAULT 'JAVA',
@@ -37,6 +38,8 @@ public final class MigrationRunner {
             CREATE TABLE IF NOT EXISTS job_dependency (
                 job_id TEXT NOT NULL,
                 upstream_job_id TEXT NOT NULL,
+                bend_x REAL NOT NULL DEFAULT -1,
+                bend_y REAL NOT NULL DEFAULT -1,
                 PRIMARY KEY (job_id, upstream_job_id),
                 FOREIGN KEY (job_id) REFERENCES job(id) ON DELETE CASCADE,
                 FOREIGN KEY (upstream_job_id) REFERENCES job(id) ON DELETE CASCADE
@@ -57,7 +60,8 @@ public final class MigrationRunner {
                 display_name TEXT NOT NULL DEFAULT '',
                 order_no INTEGER NOT NULL DEFAULT 0,
                 barrier_mode TEXT NOT NULL DEFAULT 'SOFT',
-                fail_mode TEXT NOT NULL DEFAULT 'STOP'
+                fail_mode TEXT NOT NULL DEFAULT 'STOP',
+                stage_width REAL NOT NULL DEFAULT -1
             )
         """),
         new Migration(6, "create flow_run table and migrate data", """
@@ -74,6 +78,8 @@ public final class MigrationRunner {
                 flow_id TEXT NOT NULL,
                 job_id TEXT NOT NULL,
                 position INTEGER NOT NULL DEFAULT 0,
+                stage_relative_x REAL NOT NULL DEFAULT -1,
+                stage_relative_y REAL NOT NULL DEFAULT -1,
                 PRIMARY KEY (flow_id, job_id),
                 FOREIGN KEY (job_id) REFERENCES job(id) ON DELETE CASCADE
             )
@@ -85,6 +91,28 @@ public final class MigrationRunner {
         """),
         new Migration(9, "drop legacy trigger table", """
             DROP TABLE IF EXISTS job_trigger
+        """),
+        new Migration(10, "ensure stage relative position columns on jobs_to_flows", "SELECT 1"),
+        new Migration(11, "ensure stage width column on flow_stage", "SELECT 1"),
+        new Migration(12, "ensure order column on job", "SELECT 1"),
+        new Migration(13, "ensure bend point columns on job_dependency", "SELECT 1"),
+        new Migration(14, "create flow_run_job table", """
+            CREATE TABLE IF NOT EXISTS flow_run_job (
+                run_id INTEGER NOT NULL,
+                job_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'IDLE',
+                exit_code INTEGER NOT NULL DEFAULT -1,
+                stdout_text TEXT NOT NULL DEFAULT '',
+                stderr_text TEXT NOT NULL DEFAULT '',
+                error_message TEXT NOT NULL DEFAULT '',
+                started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                ended_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                duration_ms INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (run_id, job_id),
+                FOREIGN KEY (run_id) REFERENCES flow_run(id) ON DELETE CASCADE,
+                FOREIGN KEY (job_id) REFERENCES job(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_flow_run_job_run_id ON flow_run_job(run_id)
         """)
     );
     private MigrationRunner() {}
@@ -141,7 +169,6 @@ public final class MigrationRunner {
                 }
             }
         }
-        migrateLegacyDataIfNeeded(conn, migration.getVersion());
         String insertSql = "INSERT INTO schema_migrations(version, description) VALUES (?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
             ps.setInt(1, migration.getVersion());
@@ -169,8 +196,8 @@ public final class MigrationRunner {
         }
         if (version == 5 && tableExists(conn, "job_stage")) {
             execute(conn, """
-                INSERT OR IGNORE INTO flow_stage(id, display_name, order_no, barrier_mode, fail_mode)
-                SELECT id, display_name, order_no, barrier_mode, fail_mode
+                INSERT OR IGNORE INTO flow_stage(id, display_name, order_no, barrier_mode, fail_mode, stage_width)
+                SELECT id, display_name, order_no, barrier_mode, fail_mode, -1
                 FROM job_stage
                 """);
         }
@@ -192,6 +219,50 @@ public final class MigrationRunner {
                 FROM job_result
                 """);
         }
+        if (version == 10 && tableExists(conn, "jobs_to_flows")) {
+            if (!tableHasColumn(conn, "jobs_to_flows", "stage_relative_x")) {
+                execute(conn, "ALTER TABLE jobs_to_flows ADD COLUMN stage_relative_x REAL NOT NULL DEFAULT -1");
+            }
+            if (!tableHasColumn(conn, "jobs_to_flows", "stage_relative_y")) {
+                execute(conn, "ALTER TABLE jobs_to_flows ADD COLUMN stage_relative_y REAL NOT NULL DEFAULT -1");
+            }
+        }
+        if (version == 11 && tableExists(conn, "flow_stage")) {
+            if (!tableHasColumn(conn, "flow_stage", "stage_width")) {
+                execute(conn, "ALTER TABLE flow_stage ADD COLUMN stage_width REAL NOT NULL DEFAULT -1");
+            }
+        }
+        if (version == 12 && tableExists(conn, "job")) {
+            if (!tableHasColumn(conn, "job", "order_no")) {
+                execute(conn, "ALTER TABLE job ADD COLUMN order_no INTEGER NOT NULL DEFAULT 0");
+            }
+        }
+        if (version == 13 && tableExists(conn, "job_dependency")) {
+            if (!tableHasColumn(conn, "job_dependency", "bend_x")) {
+                execute(conn, "ALTER TABLE job_dependency ADD COLUMN bend_x REAL NOT NULL DEFAULT -1");
+            }
+            if (!tableHasColumn(conn, "job_dependency", "bend_y")) {
+                execute(conn, "ALTER TABLE job_dependency ADD COLUMN bend_y REAL NOT NULL DEFAULT -1");
+            }
+        }
+        if (version == 14 && tableExists(conn, "flow_run_job")) {
+            if (!tableHasColumn(conn, "flow_run_job", "exit_code")) {
+                execute(conn, "ALTER TABLE flow_run_job ADD COLUMN exit_code INTEGER NOT NULL DEFAULT -1");
+            }
+            if (!tableHasColumn(conn, "flow_run_job", "stdout_text")) {
+                execute(conn, "ALTER TABLE flow_run_job ADD COLUMN stdout_text TEXT NOT NULL DEFAULT ''");
+            }
+            if (!tableHasColumn(conn, "flow_run_job", "stderr_text")) {
+                execute(conn, "ALTER TABLE flow_run_job ADD COLUMN stderr_text TEXT NOT NULL DEFAULT ''");
+            }
+            if (!tableHasColumn(conn, "flow_run_job", "error_message")) {
+                execute(conn, "ALTER TABLE flow_run_job ADD COLUMN error_message TEXT NOT NULL DEFAULT ''");
+            }
+            if (!tableHasColumn(conn, "flow_run_job", "duration_ms")) {
+                execute(conn, "ALTER TABLE flow_run_job ADD COLUMN duration_ms INTEGER NOT NULL DEFAULT 0");
+            }
+            execute(conn, "CREATE INDEX IF NOT EXISTS idx_flow_run_job_run_id ON flow_run_job(run_id)");
+        }
     }
 
     private static boolean tableExists(Connection conn, String tableName) throws SQLException {
@@ -207,6 +278,19 @@ public final class MigrationRunner {
     private static void execute(Connection conn, String sql) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.executeUpdate();
+        }
+    }
+
+    private static boolean tableHasColumn(Connection conn, String tableName, String columnName) throws SQLException {
+        String sql = "PRAGMA table_info(" + tableName + ")";
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                if (columnName.equalsIgnoreCase(rs.getString("name"))) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

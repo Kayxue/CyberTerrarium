@@ -21,7 +21,7 @@ public class FlowJobRepository implements IFlowJobRepository {
     @Override
     public Optional<FlowJobLink> findOneById(String flowId, String jobId) {
         String sql = """
-            SELECT flow_id, job_id, position
+            SELECT flow_id, job_id, position, stage_relative_x, stage_relative_y
             FROM jobs_to_flows
             WHERE flow_id = ? AND job_id = ?
             """;
@@ -43,7 +43,7 @@ public class FlowJobRepository implements IFlowJobRepository {
     @Override
     public List<FlowJobLink> findManyByFlowId(String flowId) {
         String sql = """
-            SELECT flow_id, job_id, position
+            SELECT flow_id, job_id, position, stage_relative_x, stage_relative_y
             FROM jobs_to_flows
             WHERE flow_id = ?
             ORDER BY position ASC, job_id ASC
@@ -66,7 +66,7 @@ public class FlowJobRepository implements IFlowJobRepository {
     @Override
     public List<FlowJobLink> findAll() {
         String sql = """
-            SELECT flow_id, job_id, position
+            SELECT flow_id, job_id, position, stage_relative_x, stage_relative_y
             FROM jobs_to_flows
             ORDER BY flow_id ASC, position ASC, job_id ASC
             """;
@@ -86,14 +86,16 @@ public class FlowJobRepository implements IFlowJobRepository {
     @Override
     public void save(FlowJobLink link) {
         String sql = """
-            INSERT INTO jobs_to_flows(flow_id, job_id, position)
-            VALUES (?, ?, ?)
+            INSERT INTO jobs_to_flows(flow_id, job_id, position, stage_relative_x, stage_relative_y)
+            VALUES (?, ?, ?, ?, ?)
             """;
         try (Connection conn = databaseFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, link.getFlowId());
             ps.setString(2, link.getJobId());
             ps.setInt(3, link.getPosition());
+            ps.setDouble(4, link.getStageRelativeX());
+            ps.setDouble(5, link.getStageRelativeY());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to save flow-job link", e);
@@ -104,7 +106,7 @@ public class FlowJobRepository implements IFlowJobRepository {
     public void updateOneById(String flowId, String jobId, FlowJobLink link) {
         String sql = """
             UPDATE jobs_to_flows
-            SET flow_id = ?, job_id = ?, position = ?
+            SET flow_id = ?, job_id = ?, position = ?, stage_relative_x = ?, stage_relative_y = ?
             WHERE flow_id = ? AND job_id = ?
             """;
         try (Connection conn = databaseFactory.getConnection();
@@ -112,8 +114,10 @@ public class FlowJobRepository implements IFlowJobRepository {
             ps.setString(1, link.getFlowId());
             ps.setString(2, link.getJobId());
             ps.setInt(3, link.getPosition());
-            ps.setString(4, flowId);
-            ps.setString(5, jobId);
+            ps.setDouble(4, link.getStageRelativeX());
+            ps.setDouble(5, link.getStageRelativeY());
+            ps.setString(6, flowId);
+            ps.setString(7, jobId);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update one flow-job link", e);
@@ -137,7 +141,9 @@ public class FlowJobRepository implements IFlowJobRepository {
         return new FlowJobLink(
             rs.getString("flow_id"),
             rs.getString("job_id"),
-            rs.getInt("position")
+            rs.getInt("position"),
+            rs.getDouble("stage_relative_x"),
+            rs.getDouble("stage_relative_y")
         );
     }
 }

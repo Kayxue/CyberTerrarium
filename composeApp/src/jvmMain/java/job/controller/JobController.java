@@ -10,6 +10,7 @@ import job.model.JobConfig;
 import job.model.JobDependency;
 import job.model.flow.FlowJobLink;
 import job.model.result.FlowRun;
+import job.model.result.FlowRunJob;
 import job.model.script.JobScript;
 import job.model.script.ScriptLanguage;
 import job.model.stage.BarrierMode;
@@ -18,10 +19,12 @@ import job.model.stage.StageFailMode;
 import job.model.trigger.ManualTrigger;
 import job.repository.FlowJobRepository;
 import job.repository.FlowRunRepository;
+import job.repository.FlowRunJobRepository;
 import job.repository.FlowStageRepository;
 import job.repository.FlowTriggerRepository;
 import job.repository.IFlowJobRepository;
 import job.repository.IFlowRunRepository;
+import job.repository.IFlowRunJobRepository;
 import job.repository.IFlowStageRepository;
 import job.repository.IFlowTriggerRepository;
 import job.repository.IJobConfigRepository;
@@ -31,6 +34,7 @@ import job.repository.JobConfigRepository;
 import job.repository.JobDependencyRepository;
 import job.repository.JobRepository;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -45,6 +49,7 @@ public class JobController implements IJobController {
     private final IFlowJobRepository flowJobRepository;
     private final IFlowStageRepository flowStageRepository;
     private final IFlowRunRepository flowRunRepository;
+    private final IFlowRunJobRepository flowRunJobRepository;
     private final Executor executor;
 
     public JobController(
@@ -55,6 +60,7 @@ public class JobController implements IJobController {
         IFlowJobRepository flowJobRepository,
         IFlowStageRepository flowStageRepository,
         IFlowRunRepository flowRunRepository,
+        IFlowRunJobRepository flowRunJobRepository,
         Executor executor
     ) {
         this.jobRepository = jobRepository;
@@ -64,6 +70,7 @@ public class JobController implements IJobController {
         this.flowJobRepository = flowJobRepository;
         this.flowStageRepository = flowStageRepository;
         this.flowRunRepository = flowRunRepository;
+        this.flowRunJobRepository = flowRunJobRepository;
         this.executor = executor;
     }
 
@@ -76,6 +83,7 @@ public class JobController implements IJobController {
         IFlowJobRepository flowJobRepository = new FlowJobRepository(db);
         IFlowStageRepository flowStageRepository = new FlowStageRepository(db);
         IFlowRunRepository flowRunRepository = new FlowRunRepository(db);
+        IFlowRunJobRepository flowRunJobRepository = new FlowRunJobRepository(db);
 
         FlowExecutionPlanner planner = new FlowExecutionPlanner(
             flowJobRepository,
@@ -85,7 +93,7 @@ public class JobController implements IJobController {
         );
         Scheduler scheduler = new Scheduler();
         Dispatcher dispatcher = new Dispatcher();
-        Executor executor = new Executor(planner, scheduler, dispatcher, flowRunRepository);
+        Executor executor = new Executor(planner, scheduler, dispatcher, flowRunRepository, flowRunJobRepository);
         return new JobController(
             jobRepository,
             configRepository,
@@ -94,6 +102,7 @@ public class JobController implements IJobController {
             flowJobRepository,
             flowStageRepository,
             flowRunRepository,
+            flowRunJobRepository,
             executor
         );
     }
@@ -150,6 +159,11 @@ public class JobController implements IJobController {
     }
 
     @Override
+    public List<FlowRunJob> listFlowRunJobs(List<Long> runIds) {
+        return flowRunJobRepository.findManyByRunIds(runIds);
+    }
+
+    @Override
     public List<FlowStage> listFlowStages(String flowId) {
         return flowStageRepository.findManyByFlowId(flowId);
     }
@@ -175,6 +189,7 @@ public class JobController implements IJobController {
         job.setConfig(new JobConfig());
         job.setTrigger(new ManualTrigger());
         job.setEnabled(true);
+        job.setOrder(position);
 
         jobRepository.save(job);
         jobConfigRepository.save(job.getId(), job.getConfig());
@@ -199,29 +214,31 @@ public class JobController implements IJobController {
         stage.setOrder(order);
         stage.setBarrierMode(barrierMode == null ? BarrierMode.SOFT : barrierMode);
         stage.setFailMode(failMode == null ? StageFailMode.STOP : failMode);
-
-        if (flowStageRepository.findOneById(stage.getId()).isPresent()) {
+        FlowStage existing = flowStageRepository.findOneById(stage.getId()).orElse(null);
+        if (existing != null) {
+            stage.setStageWidth(existing.getStageWidth());
             flowStageRepository.updateOneById(stage.getId(), stage);
         } else {
+            stage.setStageWidth(-1d);
             flowStageRepository.save(stage);
         }
     }
 
     @Override
-    public void createFlow(String flowId, String initialStageId, String initialStageName) {
-        String normalizedFlowId = normalize(flowId, "demo-flow");
-        String normalizedStageId = normalize(initialStageId, normalizedFlowId + "-stage-1");
-        if (flowStageRepository.findOneById(normalizedStageId).isPresent()) {
-            return;
-        }
+    public String createFlow(String flowName) {
+        String normalizedFlowName = normalize(flowName, "Untitled Flow");
+        String normalizedFlowId = generateUniqueFlowId();
+        String normalizedStageId = generateUniqueStageId(normalizedFlowId);
         FlowStage stage = new FlowStage();
         stage.setId(normalizedStageId);
         stage.setFlowId(normalizedFlowId);
-        stage.setDisplayName(normalize(initialStageName, "Stage 1"));
+        stage.setDisplayName(normalizedFlowName);
         stage.setOrder(0);
         stage.setBarrierMode(BarrierMode.SOFT);
         stage.setFailMode(StageFailMode.STOP);
+        stage.setStageWidth(-1d);
         flowStageRepository.save(stage);
+        return normalizedFlowId;
     }
 
     @Override
@@ -234,6 +251,7 @@ public class JobController implements IJobController {
         }
         for (FlowRun run : flowRunRepository.findAll()) {
             if (flowId.equals(run.getFlowId())) {
+                flowRunJobRepository.deleteManyByRunId(run.getId());
                 flowRunRepository.deleteOneById(run.getId());
             }
         }
@@ -257,14 +275,55 @@ public class JobController implements IJobController {
     }
 
     @Override
-    public void updateJob(String jobId, String title, String description, String stageId, boolean enabled) {
+    public void updateJob(String jobId, String title, String description, String stageId, int order, boolean enabled) {
         Job existing = jobRepository.findOneById(jobId)
             .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
         existing.setTitle(normalize(title, existing.getTitle()));
         existing.setDescription(description == null ? "" : description);
         existing.setStageId(normalize(stageId, existing.getStageId()));
+        existing.setOrder(order);
         existing.setEnabled(enabled);
         jobRepository.updateOneById(jobId, existing);
+        FlowStage stage = flowStageRepository.findOneById(existing.getStageId())
+            .orElseThrow(() -> new IllegalArgumentException("Stage not found: " + existing.getStageId()));
+        cleanupInvalidDependenciesForFlow(stage.getFlowId());
+    }
+
+    @Override
+    public void updateJobScript(String jobId, ScriptLanguage language, String scriptContent) {
+        Job existing = jobRepository.findOneById(jobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+        JobScript currentScript = existing.getScript() == null ? new JobScript() : existing.getScript();
+        ScriptLanguage resolvedLanguage = language == null ? currentScript.getLanguage() : language;
+        existing.setScript(new JobScript(resolvedLanguage, scriptContent == null ? "" : scriptContent));
+        jobRepository.updateOneById(jobId, existing);
+    }
+
+    @Override
+    public void updateFlowJobStageRelativePosition(String flowId, String jobId, double stageRelativeX, double stageRelativeY) {
+        FlowJobLink existing = flowJobRepository.findOneById(flowId, jobId)
+            .orElseThrow(() -> new IllegalArgumentException("Flow job link not found: " + flowId + "/" + jobId));
+        double normalizedX = Math.max(0d, Math.min(1d, stageRelativeX));
+        double normalizedY = Math.max(0d, Math.min(1d, stageRelativeY));
+        existing.setStageRelativeX(normalizedX);
+        existing.setStageRelativeY(normalizedY);
+        flowJobRepository.updateOneById(flowId, jobId, existing);
+    }
+
+    @Override
+    public void updateFlowStageWidth(String stageId, double stageWidth) {
+        FlowStage stage = flowStageRepository.findOneById(stageId)
+            .orElseThrow(() -> new IllegalArgumentException("Stage not found: " + stageId));
+        double normalized = stageWidth <= 0d ? -1d : stageWidth;
+        stage.setStageWidth(normalized);
+        flowStageRepository.updateOneById(stageId, stage);
+    }
+
+    @Override
+    public void updateJobDependencyControlPoint(String jobId, String upstreamJobId, double bendX, double bendY) {
+        double normalizedBendX = bendX < 0d ? -1d : bendX;
+        double normalizedBendY = bendY < 0d ? -1d : bendY;
+        jobDependencyRepository.updateControlPoint(jobId, upstreamJobId, normalizedBendX, normalizedBendY);
     }
 
     @Override
@@ -274,8 +333,31 @@ public class JobController implements IJobController {
         if (normalizedJobId.isEmpty() || normalizedUpstream.isEmpty()) {
             return;
         }
+        if (normalizedJobId.equals(normalizedUpstream)) {
+            throw new IllegalArgumentException("Dependency cannot point to itself");
+        }
+        Job currentJob = jobRepository.findOneById(normalizedJobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + normalizedJobId));
+        Job upstreamJob = jobRepository.findOneById(normalizedUpstream)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + normalizedUpstream));
+        FlowStage currentStage = flowStageRepository.findOneById(currentJob.getStageId())
+            .orElseThrow(() -> new IllegalArgumentException("Stage not found: " + currentJob.getStageId()));
+        FlowStage upstreamStage = flowStageRepository.findOneById(upstreamJob.getStageId())
+            .orElseThrow(() -> new IllegalArgumentException("Stage not found: " + upstreamJob.getStageId()));
+
+        if (!currentStage.getFlowId().equals(upstreamStage.getFlowId())) {
+            throw new IllegalArgumentException("Dependency must stay within the same flow");
+        }
+        if (upstreamStage.getOrder() > currentStage.getOrder()) {
+            throw new IllegalArgumentException("Dependency cannot link to a later stage");
+        }
+        validateOrderDependency(currentJob, upstreamJob);
+
         if (jobDependencyRepository.findOneById(normalizedJobId, normalizedUpstream).isPresent()) {
             return;
+        }
+        if (willCreateCycle(normalizedJobId, normalizedUpstream)) {
+            throw new IllegalArgumentException("Dependency would create a cycle");
         }
         JobDependency dependency = new JobDependency();
         dependency.setJobId(normalizedJobId);
@@ -312,5 +394,106 @@ public class JobController implements IJobController {
             return fallback;
         }
         return value.trim();
+    }
+
+    private String generateUniqueFlowId() {
+        Set<String> existingFlowIds = new LinkedHashSet<>(listFlowIds());
+        String candidate = "flow-" + UUID.randomUUID().toString().substring(0, 8);
+        while (existingFlowIds.contains(candidate)) {
+            candidate = "flow-" + UUID.randomUUID().toString().substring(0, 8);
+        }
+        return candidate;
+    }
+
+    private String generateUniqueStageId(String flowId) {
+        String base = flowId + "-stage-1";
+        String candidate = base;
+        int suffix = 2;
+        while (flowStageRepository.findOneById(candidate).isPresent()) {
+            candidate = base + "-" + suffix;
+            suffix++;
+        }
+        return candidate;
+    }
+
+    private void validateOrderDependency(Job currentJob, Job upstreamJob) {
+        if (!currentJob.getStageId().equals(upstreamJob.getStageId())) {
+            return;
+        }
+        if (upstreamJob.getOrder() > currentJob.getOrder()) {
+            throw new IllegalArgumentException("Dependency cannot point from higher order to lower order");
+        }
+    }
+
+    private void cleanupInvalidDependenciesForFlow(String flowId) {
+        if (flowId == null || flowId.isBlank()) {
+            return;
+        }
+        List<FlowStage> stages = flowStageRepository.findManyByFlowId(flowId);
+        java.util.Map<String, FlowStage> stageById = new java.util.HashMap<>();
+        for (FlowStage stage : stages) {
+            stageById.put(stage.getId(), stage);
+        }
+
+        java.util.Map<String, Job> jobById = new java.util.HashMap<>();
+        for (Job job : jobRepository.findAll()) {
+            if (stageById.containsKey(job.getStageId())) {
+                jobById.put(job.getId(), job);
+            }
+        }
+
+        List<JobDependency> toDelete = new ArrayList<>();
+        for (JobDependency dependency : jobDependencyRepository.findAll()) {
+            Job downstream = jobById.get(dependency.getJobId());
+            Job upstream = jobById.get(dependency.getUpstreamJobId());
+            if (downstream == null || upstream == null) {
+                continue;
+            }
+            FlowStage downstreamStage = stageById.get(downstream.getStageId());
+            FlowStage upstreamStage = stageById.get(upstream.getStageId());
+            if (downstreamStage == null || upstreamStage == null) {
+                continue;
+            }
+            boolean invalidByStage = upstreamStage.getOrder() > downstreamStage.getOrder();
+            boolean invalidByOrder = upstreamStage.getId().equals(downstreamStage.getId()) &&
+                upstream.getOrder() > downstream.getOrder();
+            if (invalidByStage || invalidByOrder) {
+                toDelete.add(dependency);
+            }
+        }
+        for (JobDependency dependency : toDelete) {
+            jobDependencyRepository.deleteOneById(dependency.getJobId(), dependency.getUpstreamJobId());
+        }
+    }
+
+    private boolean willCreateCycle(String jobId, String upstreamJobId) {
+        // Existing edges represent upstream -> job.
+        java.util.Map<String, java.util.Set<String>> downstreamByUpstream = new java.util.HashMap<>();
+        for (JobDependency dependency : jobDependencyRepository.findAll()) {
+            downstreamByUpstream
+                .computeIfAbsent(dependency.getUpstreamJobId(), ignored -> new java.util.HashSet<>())
+                .add(dependency.getJobId());
+        }
+
+        // If upstream is reachable from job, adding upstream -> job creates a cycle.
+        java.util.ArrayDeque<String> queue = new java.util.ArrayDeque<>();
+        java.util.HashSet<String> visited = new java.util.HashSet<>();
+        queue.add(jobId);
+
+        while (!queue.isEmpty()) {
+            String current = queue.removeFirst();
+            if (!visited.add(current)) {
+                continue;
+            }
+            if (current.equals(upstreamJobId)) {
+                return true;
+            }
+            for (String next : downstreamByUpstream.getOrDefault(current, java.util.Set.of())) {
+                if (!visited.contains(next)) {
+                    queue.addLast(next);
+                }
+            }
+        }
+        return false;
     }
 }

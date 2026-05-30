@@ -3,6 +3,7 @@ package job.controller;
 import job.model.Job;
 import job.model.JobDependency;
 import job.model.flow.FlowJobLink;
+import job.model.result.FlowRunJob;
 import job.model.result.FlowRun;
 import job.model.script.ScriptLanguage;
 import job.model.stage.BarrierMode;
@@ -19,6 +20,7 @@ public interface IJobController {
     List<JobDependency> listJobDependenciesByJobIds(List<String> jobIds);
     List<String> listFlowIds();
     List<FlowRun> listFlowRuns();
+    List<FlowRunJob> listFlowRunJobs(List<Long> runIds);
     List<FlowStage> listFlowStages(String flowId);
     String createJobForFlow(
         String flowId,
@@ -37,10 +39,14 @@ public interface IJobController {
         BarrierMode barrierMode,
         StageFailMode failMode
     );
-    void createFlow(String flowId, String initialStageId, String initialStageName);
+    String createFlow(String flowName);
     void deleteFlow(String flowId);
     void deleteJob(String jobId);
-    void updateJob(String jobId, String title, String description, String stageId, boolean enabled);
+    void updateJob(String jobId, String title, String description, String stageId, int order, boolean enabled);
+    void updateJobScript(String jobId, ScriptLanguage language, String scriptContent);
+    void updateFlowJobStageRelativePosition(String flowId, String jobId, double stageRelativeX, double stageRelativeY);
+    void updateFlowStageWidth(String stageId, double stageWidth);
+    void updateJobDependencyControlPoint(String jobId, String upstreamJobId, double bendX, double bendY);
     void saveJobDependency(String jobId, String upstreamJobId);
     void deleteJobDependency(String jobId, String upstreamJobId);
     void deleteFlowStage(String stageId);
