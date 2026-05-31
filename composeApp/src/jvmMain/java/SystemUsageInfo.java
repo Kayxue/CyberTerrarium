@@ -6,6 +6,7 @@ public record SystemUsageInfo(
         long bytesReceived,
         long bytesSent,
         long downloadBytesPerSecond,
-        long uploadBytesPerSecond
+        long uploadBytesPerSecond,
+        double cpuTemperature
 ) {
 }

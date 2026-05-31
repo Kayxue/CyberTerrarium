@@ -62,7 +62,7 @@ fun Home(){
                         Text("CPU", fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "${usage?.cpuUsagePercent?.roundToInt() ?: 0}%",
+                            "${usage?.cpuUsagePercent?.roundToInt() ?: 0}% / ${usage?.cpuTemperature?.roundToInt() ?: 0}°C",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )

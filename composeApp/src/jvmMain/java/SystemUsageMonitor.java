@@ -1,17 +1,13 @@
 import oshi.SystemInfo;
-import oshi.hardware.CentralProcessor;
-import oshi.hardware.GlobalMemory;
-import oshi.hardware.HardwareAbstractionLayer;
-import oshi.hardware.NetworkIF;
+import oshi.hardware.*;
 
 import java.util.List;
 
 public class SystemUsageMonitor {
-    private final SystemInfo systemInfo;
-    private final HardwareAbstractionLayer hardware;
     private final CentralProcessor processor;
     private final GlobalMemory memory;
     private final List<NetworkIF> networkIFs;
+    private final Sensors sensors;
 
     private long[] previousCpuTicks;
     private long previousBytesReceived;
@@ -19,11 +15,12 @@ public class SystemUsageMonitor {
     private long previousNetworkSampleTime;
 
     public SystemUsageMonitor() {
-        this.systemInfo = new SystemInfo();
-        this.hardware = systemInfo.getHardware();
+        SystemInfo systemInfo = new SystemInfo();
+        HardwareAbstractionLayer hardware = systemInfo.getHardware();
         this.processor = hardware.getProcessor();
         this.memory = hardware.getMemory();
         this.networkIFs = hardware.getNetworkIFs();
+        this.sensors = hardware.getSensors();
 
         this.previousCpuTicks = processor.getSystemCpuLoadTicks();
 
@@ -61,6 +58,8 @@ public class SystemUsageMonitor {
                 ? 0
                 : (currentBytesSent - previousBytesSent) * 1000 / elapsedMillis;
 
+        double cpuTemperature = sensors.getCpuTemperature();
+
         previousBytesReceived = currentBytesReceived;
         previousBytesSent = currentBytesSent;
         previousNetworkSampleTime = currentTime;
@@ -73,7 +72,8 @@ public class SystemUsageMonitor {
                 currentBytesReceived,
                 currentBytesSent,
                 downloadBytesPerSecond,
-                uploadBytesPerSecond
+                uploadBytesPerSecond,
+                cpuTemperature
         );
     }
 
