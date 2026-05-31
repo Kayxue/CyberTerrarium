@@ -54,8 +54,6 @@ fun JobManagementHeader(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("Job Management", style = MaterialTheme.typography.headlineSmall)
-
         SelectDropdownField(
             label = "Flow",
             value = selectedFlowId ?: "Select Flow",

@@ -11,12 +11,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import job.model.Job
@@ -46,10 +48,10 @@ fun SelectionInspectorPanel(
             .fillMaxHeight()
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Inspector", style = MaterialTheme.typography.titleMedium)
                 AppButton(onClick = onClose) { Text("Close") }
             }
@@ -104,11 +106,17 @@ private fun JobInspector(
 
     Text("Job", style = MaterialTheme.typography.titleSmall)
     Text("ID: ${selectedJob.id}")
-    OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") })
+    OutlinedTextField(
+        value = title,
+        onValueChange = { title = it },
+        label = { Text("Title") },
+        modifier = Modifier.fillMaxWidth()
+    )
     OutlinedTextField(
         value = description,
         onValueChange = { description = it },
-        label = { Text("Description") }
+        label = { Text("Description") },
+        modifier = Modifier.fillMaxWidth()
     )
     SelectDropdownField(
         label = "Stage",
@@ -131,9 +139,13 @@ private fun JobInspector(
         },
         modifier = Modifier.fillMaxWidth()
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Checkbox(checked = enabled, onCheckedChange = { enabled = it })
-        Text("Enabled")
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text("Enabled: ")
+        Switch(checked = enabled, onCheckedChange = { enabled = it })
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         AppButton(onClick = { onEditScript(selectedJob.id) }) { Text("Edit Script") }

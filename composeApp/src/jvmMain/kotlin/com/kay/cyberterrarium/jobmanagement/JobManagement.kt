@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.kay.cyberterrarium.jobmanagement.components.*
@@ -155,6 +156,7 @@ fun JobManagement() {
         val defaultFlowId = selectedFlowId ?: flowIds.firstOrNull().orEmpty()
         CreateStageDialog(
             defaultFlowId = defaultFlowId,
+            flowIds = flowIds,
             onDismiss = { showCreateStageDialog = false },
             onCreate = { flowId, stageId, stageName, order ->
                 scope.launch {
@@ -217,11 +219,10 @@ fun JobManagement() {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
             .safeContentPadding()
-            .padding(10.dp)
+            .padding(16.dp)
     ) {
         Column(
             modifier = Modifier
-                .padding(start = 12.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -447,7 +448,7 @@ fun JobManagement() {
                         if (selection != null) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
-                                contentAlignment = androidx.compose.ui.Alignment.TopEnd
+                                contentAlignment = Alignment.TopEnd
                             ) {
                                 SelectionInspectorPanel(
                                     selectedJob = selectedJob(),
@@ -605,6 +606,7 @@ private fun CreateFlowDialog(
 @Composable
 private fun CreateStageDialog(
     defaultFlowId: String,
+    flowIds: List<String>,
     onDismiss: () -> Unit,
     onCreate: (String, String, String, Int) -> Unit
 ) {
@@ -618,10 +620,30 @@ private fun CreateStageDialog(
         title = { Text("Create Stage") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = flowId, onValueChange = { flowId = it }, label = { Text("Flow ID") })
-                OutlinedTextField(value = stageId, onValueChange = { stageId = it }, label = { Text("Stage ID") })
-                OutlinedTextField(value = stageName, onValueChange = { stageName = it }, label = { Text("Name") })
-                OutlinedTextField(value = orderText, onValueChange = { orderText = it }, label = { Text("Order") })
+                SelectDropdownField(
+                    label = "Flow ID",
+                    value = flowId,
+                    options = flowIds,
+                    onSelect = { flowId = it }
+                )
+                OutlinedTextField(
+                    value = stageId,
+                    onValueChange = { stageId = it },
+                    label = { Text("Stage ID") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = stageName,
+                    onValueChange = { stageName = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = orderText,
+                    onValueChange = { orderText = it },
+                    label = { Text("Order") },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
@@ -656,7 +678,12 @@ private fun CreateJobDialog(
         title = { Text("Create Job") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = flowId, onValueChange = { flowId = it }, label = { Text("Flow ID") })
+                OutlinedTextField(
+                    value = flowId,
+                    onValueChange = { flowId = it },
+                    label = { Text("Flow ID") },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 SelectDropdownField(
                     label = "Stage",
                     value = stageOptions.firstOrNull { it.id == stageId }?.let { "${it.displayName} (${it.id})" }
@@ -670,17 +697,36 @@ private fun CreateJobDialog(
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") })
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description") })
-                OutlinedTextField(value = language, onValueChange = { language = it }, label = { Text("Language") })
+                    label = { Text("Description") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = language,
+                    onValueChange = { language = it },
+                    label = { Text("Language") },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 OutlinedTextField(
                     value = positionText,
                     onValueChange = { positionText = it },
-                    label = { Text("Position") })
-                OutlinedTextField(value = script, onValueChange = { script = it }, label = { Text("Script") })
+                    label = { Text("Position") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = script,
+                    onValueChange = { script = it },
+                    label = { Text("Script") },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
