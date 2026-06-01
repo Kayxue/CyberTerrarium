@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +39,8 @@ fun JobManagement() {
     var selection by remember { mutableStateOf<GraphSelection?>(null) }
     var scriptEditorJobId by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf("") }
+    var snackbarMessage by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var allJobs by remember { mutableStateOf<List<Job>>(emptyList()) }
     var allFlowLinks by remember { mutableStateOf<List<FlowJobLink>>(emptyList()) }
@@ -136,6 +140,12 @@ fun JobManagement() {
         refresh()
     }
 
+    LaunchedEffect(snackbarMessage) {
+        val text = snackbarMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(text)
+        snackbarMessage = null
+    }
+
     if (showCreateFlowDialog) {
         CreateFlowDialog(
             onDismiss = { showCreateFlowDialog = false },
@@ -214,7 +224,7 @@ fun JobManagement() {
         )
     }
 
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
@@ -462,7 +472,7 @@ fun JobManagement() {
                                             withContext(Dispatchers.IO) {
                                                 controller.updateJob(jobId, title, description, stageId, order, enabled)
                                             }
-                                            message = "Job updated: $jobId"
+                                            snackbarMessage = "Job updated: $jobId"
                                             refresh()
                                         }
                                     },
@@ -571,6 +581,11 @@ fun JobManagement() {
                 }
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
