@@ -22,6 +22,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
             implementation("com.materialkolor:material-kolor:4.1.1")
+            implementation ("io.github.ehsannarmani:compose-charts:latest_version")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
