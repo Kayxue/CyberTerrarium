@@ -1,14 +1,22 @@
 package com.kay.cyberterrarium.jobmanagement.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -20,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import job.model.Job
 import job.model.JobDependency
@@ -53,7 +62,12 @@ fun SelectionInspectorPanel(
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Inspector", style = MaterialTheme.typography.titleMedium)
-                AppButton(onClick = onClose) { Text("Close") }
+                IconButton(onClick = onClose,
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                        .width(32.dp).height(32.dp)
+                ) {
+                    Icon(imageVector = Icons.Filled.Close, contentDescription = "Close")
+                }
             }
 
             if (selectedJob != null) {
@@ -147,10 +161,23 @@ private fun JobInspector(
         Text("Enabled: ")
         Switch(checked = enabled, onCheckedChange = { enabled = it })
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AppButton(onClick = { onEditScript(selectedJob.id) }) { Text("Edit Script") }
-        AppButton(onClick = { onSave(selectedJob.id, title, description, stageId, orderValue, enabled) }) { Text("Save") }
-        AppButton(onClick = { onDelete(selectedJob.id) }) { Text("Delete") }
+    AppButton(
+        onClick = { onEditScript(selectedJob.id) },
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+    ) { Text("Edit Script") }
+    Row(horizontalArrangement = Arrangement.SpaceBetween) {
+        AppButton(
+            onClick = { onSave(selectedJob.id, title, description, stageId, orderValue, enabled) },
+            modifier = Modifier.weight(1f),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+        ) { Text("Save") }
+        Spacer(modifier = Modifier.width(8.dp))
+        AppButton(
+            onClick = { onDelete(selectedJob.id) },
+            modifier = Modifier.weight(1f),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+        ) { Text("Delete") }
     }
 }
 
@@ -168,11 +195,17 @@ private fun StageInspector(
     Text("Stage", style = MaterialTheme.typography.titleSmall)
     Text("ID: ${selectedStage.id}")
     Text("Flow: ${selectedStage.flowId}")
-    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") })
+    OutlinedTextField(
+        value = name,
+        onValueChange = { name = it },
+        label = { Text("Name") },
+        modifier = Modifier.fillMaxWidth()
+    )
     OutlinedTextField(
         value = orderText,
         onValueChange = { orderText = it },
-        label = { Text("Order") }
+        label = { Text("Order") },
+        modifier = Modifier.fillMaxWidth()
     )
 
     SelectDropdownField(
@@ -189,13 +222,20 @@ private fun StageInspector(
         onSelect = { selected -> failMode = StageFailMode.valueOf(selected) },
         modifier = Modifier.fillMaxWidth()
     )
-
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AppButton(onClick = {
-            val order = orderText.toIntOrNull() ?: selectedStage.order
-            onSave(selectedStage.id, name, order, barrierMode, failMode)
-        }) { Text("Save") }
-        AppButton(onClick = { onDelete(selectedStage.id) }) { Text("Delete") }
+        AppButton(
+            onClick = {
+                val order = orderText.toIntOrNull() ?: selectedStage.order
+                onSave(selectedStage.id, name, order, barrierMode, failMode)
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+            modifier = Modifier.weight(1f)
+        ) { Text("Save") }
+        AppButton(
+            onClick = { onDelete(selectedStage.id) },
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            modifier = Modifier.weight(1f)
+        ) { Text("Delete") }
     }
 }
 

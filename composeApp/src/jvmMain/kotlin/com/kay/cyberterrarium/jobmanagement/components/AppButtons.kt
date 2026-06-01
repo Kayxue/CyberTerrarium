@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
@@ -27,26 +28,30 @@ fun AppButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     variant: AppButtonVariant = AppButtonVariant.DEFAULT,
+    colors: ButtonColors? = null,
     content: @Composable () -> Unit
 ) {
-    val colors = MaterialTheme.colorScheme
-    val buttonColors = when (variant) {
+    val colorsScheme = MaterialTheme.colorScheme
+    val buttonColors = colors ?: when (variant) {
         AppButtonVariant.DEFAULT -> ButtonDefaults.buttonColors()
         AppButtonVariant.PRIMARY -> ButtonDefaults.buttonColors(
-            containerColor = colors.primary,
-            contentColor = colors.onPrimary
+            containerColor = colorsScheme.primary,
+            contentColor = colorsScheme.onPrimary
         )
+
         AppButtonVariant.SUCCESS -> ButtonDefaults.buttonColors(
-            containerColor = colors.tertiaryContainer,
-            contentColor = colors.onTertiaryContainer
+            containerColor = colorsScheme.tertiaryContainer,
+            contentColor = colorsScheme.onTertiaryContainer
         )
+
         AppButtonVariant.DANGER -> ButtonDefaults.buttonColors(
-            containerColor = colors.errorContainer,
-            contentColor = colors.onErrorContainer
+            containerColor = colorsScheme.errorContainer,
+            contentColor = colorsScheme.onErrorContainer
         )
+
         AppButtonVariant.MUTED -> ButtonDefaults.buttonColors(
-            containerColor = colors.surfaceVariant,
-            contentColor = colors.onSurfaceVariant
+            containerColor = colorsScheme.surfaceVariant,
+            contentColor = colorsScheme.onSurfaceVariant
         )
     }
     Button(

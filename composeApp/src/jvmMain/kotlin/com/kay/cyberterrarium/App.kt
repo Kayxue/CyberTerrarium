@@ -13,14 +13,18 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.kay.cyberterrarium.jobmanagement.JobManagement
+import com.materialkolor.rememberDynamicColorScheme
 import page.Home
 import page.Processes
 import page.Stats
 
 @Composable
 fun App() {
+    val colorScheme = rememberDynamicColorScheme(seedColor = Color(0xFF006994), isDark = false)
+
     var selectedItem by remember { mutableIntStateOf(0) }
 
     val items = listOf("Home", "Stats", "Process", "Jobs")
@@ -39,7 +43,7 @@ fun App() {
         Icons.Outlined.Settings
     )
 
-    MaterialTheme {
+    MaterialTheme(colorScheme) {
         Scaffold {
             Row(modifier = Modifier.fillMaxSize().width(32.dp)) {
                 NavigationRail(
