@@ -12,20 +12,20 @@ import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.kay.cyberterrarium.jobmanagement.JobManagement
-import com.materialkolor.rememberDynamicColorScheme
+import com.kay.cyberterrarium.theme.AppTheme
 import page.Home
 import page.Processes
 import page.Stats
 
 @Composable
 fun App() {
-    val colorScheme = rememberDynamicColorScheme(seedColor = Color(0xFF006994), isDark = false)
-
     var selectedItem by remember { mutableIntStateOf(0) }
+    var darkTheme by rememberSaveable { mutableStateOf(false) }
 
     val items = listOf("Home", "Stats", "Process", "Jobs")
 
@@ -43,7 +43,7 @@ fun App() {
         Icons.Outlined.Settings
     )
 
-    MaterialTheme(colorScheme) {
+    AppTheme(darkTheme = darkTheme) {
         Scaffold {
             Row(modifier = Modifier.fillMaxSize().width(32.dp)) {
                 NavigationRail(
@@ -77,6 +77,22 @@ fun App() {
                     }
 
                     Spacer(Modifier.weight(1f))
+
+                    Column(
+                        modifier = Modifier.padding(bottom = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = if (darkTheme) "Night" else "Day",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Switch(
+                            checked = darkTheme,
+                            onCheckedChange = { darkTheme = it }
+                        )
+                    }
                 }
 
                 Box(
