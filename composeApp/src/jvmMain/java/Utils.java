@@ -1,4 +1,5 @@
 import java.util.List;
+import java.util.Locale;
 
 public final class Utils {
     private Utils() {
@@ -43,8 +44,23 @@ public final class Utils {
     }
 
     public static String formatSpeed(long bytesPerSecond) {
-        double kbPerSecond = bytesPerSecond / 1024.0;
-        return String.format("%.1f KB/s", kbPerSecond);
+        long safeBytesPerSecond = Math.max(0, bytesPerSecond);
+        double value = safeBytesPerSecond;
+        String[] units = {"B/s", "KB/s", "MB/s", "GB/s", "TB/s"};
+        int unitIndex = 0;
+
+        while (value >= 1024.0 && unitIndex < units.length - 1) {
+            value /= 1024.0;
+            unitIndex++;
+        }
+
+        if (unitIndex == 0) {
+            return safeBytesPerSecond + " " + units[unitIndex];
+        }
+        if (value >= 100.0) {
+            return String.format(Locale.ROOT, "%.0f %s", value, units[unitIndex]);
+        }
+        return String.format(Locale.ROOT, "%.1f %s", value, units[unitIndex]);
     }
 
     public static void addSample(List<Double> target, double value, int maxPoints) {

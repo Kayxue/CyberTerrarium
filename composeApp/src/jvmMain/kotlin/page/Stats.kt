@@ -37,6 +37,7 @@ import ir.ehsannarmani.compose_charts.models.LabelProperties
 import ir.ehsannarmani.compose_charts.models.Line
 import state.rememberSystemUsageHistory
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 private const val SAMPLE_INTERVAL_MILLIS = 1000L
 private const val MAX_POINTS = 60
@@ -96,7 +97,7 @@ fun Stats() {
         }
 
         UsageChartCard(
-            title = "Network Speed (KB/s)",
+            title = "Network Speed",
             headerValue = buildAnnotatedString {
                 withStyle(SpanStyle(color = colors.primary)) {
                     append("Down ${Utils.formatSpeed(latestUsage?.downloadBytesPerSecond ?: 0)}")
@@ -109,16 +110,16 @@ fun Stats() {
             lines = listOf(
                 Line(
                     label = "Download",
-                    values = usageHistory.downloadKb,
+                    values = usageHistory.downloadBytesPerSecond,
                     color = SolidColor(colors.primary)
                 ),
                 Line(
                     label = "Upload",
-                    values = usageHistory.uploadKb,
+                    values = usageHistory.uploadBytesPerSecond,
                     color = SolidColor(colors.tertiary)
                 )
             ),
-            indicatorFormatter = { "${it.roundToInt()} KB/s" },
+            indicatorFormatter = { Utils.formatSpeed(it.roundToLong()) },
             legendItems = listOf(
                 LegendItem(label = "Download", color = colors.primary),
                 LegendItem(label = "Upload", color = colors.tertiary)

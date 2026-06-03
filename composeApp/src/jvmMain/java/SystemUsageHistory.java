@@ -14,21 +14,21 @@ public final class SystemUsageHistory {
     private final SystemUsageInfo latest;
     private final List<Double> cpu;
     private final List<Double> memory;
-    private final List<Double> downloadKb;
-    private final List<Double> uploadKb;
+    private final List<Double> downloadBytesPerSecond;
+    private final List<Double> uploadBytesPerSecond;
 
     private SystemUsageHistory(
             SystemUsageInfo latest,
             List<Double> cpu,
             List<Double> memory,
-            List<Double> downloadKb,
-            List<Double> uploadKb
+            List<Double> downloadBytesPerSecond,
+            List<Double> uploadBytesPerSecond
     ) {
         this.latest = latest;
         this.cpu = cpu;
         this.memory = memory;
-        this.downloadKb = downloadKb;
-        this.uploadKb = uploadKb;
+        this.downloadBytesPerSecond = downloadBytesPerSecond;
+        this.uploadBytesPerSecond = uploadBytesPerSecond;
     }
 
     public static SystemUsageHistory empty() {
@@ -47,12 +47,12 @@ public final class SystemUsageHistory {
         return memory;
     }
 
-    public List<Double> getDownloadKb() {
-        return downloadKb;
+    public List<Double> getDownloadBytesPerSecond() {
+        return downloadBytesPerSecond;
     }
 
-    public List<Double> getUploadKb() {
-        return uploadKb;
+    public List<Double> getUploadBytesPerSecond() {
+        return uploadBytesPerSecond;
     }
 
     public SystemUsageHistory withSample(SystemUsageInfo usage, int maxPoints) {
@@ -60,8 +60,8 @@ public final class SystemUsageHistory {
                 usage,
                 appendBounded(cpu, usage.cpuUsagePercent(), maxPoints),
                 appendBounded(memory, usage.memoryUsagePercent(), maxPoints),
-                appendBounded(downloadKb, usage.downloadBytesPerSecond() / 1024.0, maxPoints),
-                appendBounded(uploadKb, usage.uploadBytesPerSecond() / 1024.0, maxPoints)
+                appendBounded(downloadBytesPerSecond, usage.downloadBytesPerSecond(), maxPoints),
+                appendBounded(uploadBytesPerSecond, usage.uploadBytesPerSecond(), maxPoints)
         );
     }
 

@@ -150,7 +150,7 @@ fun Home(){
                                 )
                                 Text("Download:", fontWeight = FontWeight.SemiBold, color = colors.onSurface)
                             }
-                            Text("${Utils.formatBytes(usage?.downloadBytesPerSecond ?: 0)}/s", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
+                            Text(Utils.formatSpeed(usage?.downloadBytesPerSecond ?: 0), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
                         }
                     }
                 }
@@ -174,7 +174,7 @@ fun Home(){
                                 )
                                 Text("Upload:", fontWeight = FontWeight.SemiBold, color = colors.onSurface)
                             }
-                            Text("${Utils.formatBytes(usage?.uploadBytesPerSecond ?: 0)}/s", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
+                            Text(Utils.formatSpeed(usage?.uploadBytesPerSecond ?: 0), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
                         }
                     }
                 }
