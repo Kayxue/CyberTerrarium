@@ -8,6 +8,9 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Light
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Nightlight
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
@@ -78,20 +81,14 @@ fun App() {
 
                     Spacer(Modifier.weight(1f))
 
-                    Column(
-                        modifier = Modifier.padding(bottom = 16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = if (darkTheme) "Night" else "Day",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Switch(
-                            checked = darkTheme,
-                            onCheckedChange = { darkTheme = it }
-                        )
+                    Box(modifier = Modifier.padding(bottom = 16.dp)){
+                        FloatingActionButton(onClick = {darkTheme = !darkTheme}){
+                            if (darkTheme) {
+                                Icon(Icons.Outlined.Nightlight, contentDescription = "Dark Icon")
+                            } else {
+                                Icon(Icons.Outlined.LightMode, contentDescription = "Dark Icon")
+                            }
+                        }
                     }
                 }
 
