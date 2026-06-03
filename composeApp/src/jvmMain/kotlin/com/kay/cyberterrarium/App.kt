@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Light
 import androidx.compose.material.icons.outlined.LightMode
@@ -83,11 +84,7 @@ fun App() {
 
                     Box(modifier = Modifier.padding(bottom = 16.dp)){
                         FloatingActionButton(onClick = {darkTheme = !darkTheme}){
-                            if (darkTheme) {
-                                Icon(Icons.Outlined.Nightlight, contentDescription = "Dark Icon")
-                            } else {
-                                Icon(Icons.Outlined.LightMode, contentDescription = "Dark Icon")
-                            }
+                            Icon(Icons.Outlined.Light, contentDescription = "Dark Icon")
                         }
                     }
                 }
