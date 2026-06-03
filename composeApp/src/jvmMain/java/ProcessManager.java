@@ -1,17 +1,24 @@
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.function.Consumer;
+
 public class ProcessManager {
 
     private final SystemUsageMonitor monitor;
-    private final java.util.concurrent.ScheduledExecutorService scheduler;
-    private final java.util.List<java.util.function.Consumer<SystemUsageInfo>> listeners;
+    private final ScheduledExecutorService scheduler;
+    private final List<Consumer<SystemUsageInfo>> listeners;
     private final long intervalMillis;
-    private java.util.concurrent.ScheduledFuture<?> task;
+    private ScheduledFuture<?> task;
     private volatile SystemUsageInfo latest;
 
     public ProcessManager(long intervalMillis) {
         this.intervalMillis = intervalMillis;
         this.monitor = new SystemUsageMonitor();
-        this.listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
-        this.scheduler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(runnable -> {
+        this.listeners = new CopyOnWriteArrayList<>();
+        this.scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "system-usage-monitor");
             thread.setDaemon(true);
             return thread;
@@ -25,13 +32,13 @@ public class ProcessManager {
         task = scheduler.scheduleAtFixedRate(this::sample, 0, intervalMillis, java.util.concurrent.TimeUnit.MILLISECONDS);
     }
 
-    public void addListener(java.util.function.Consumer<SystemUsageInfo> listener) {
+    public void addListener(Consumer<SystemUsageInfo> listener) {
         if (listener != null) {
             listeners.add(listener);
         }
     }
 
-    public void removeListener(java.util.function.Consumer<SystemUsageInfo> listener) {
+    public void removeListener(Consumer<SystemUsageInfo> listener) {
         listeners.remove(listener);
     }
 
@@ -54,7 +61,7 @@ public class ProcessManager {
     private void sample() {
         SystemUsageInfo usage = monitor.getUsage();
         latest = usage;
-        for (java.util.function.Consumer<SystemUsageInfo> listener : listeners) {
+        for (Consumer<SystemUsageInfo> listener : listeners) {
             listener.accept(usage);
         }
     }
