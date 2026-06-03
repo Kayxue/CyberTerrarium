@@ -1,32 +1,55 @@
 package state
 
 import SystemUsageInfo
-import SystemUsageMonitor
+import SystemUsageHistory
+import SystemUsageSampler
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.State
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun rememberSystemUsage(
     intervalMillis: Long = 1000L
 ): SystemUsageInfo? {
-    val monitor = remember { SystemUsageMonitor() }
+    return rememberSystemUsageState(intervalMillis).value
+}
 
-    var usage by remember {
-        mutableStateOf<SystemUsageInfo?>(null)
-    }
+@Composable
+fun rememberSystemUsageHistory(
+    intervalMillis: Long = 1000L,
+    maxPoints: Int = 60
+): SystemUsageHistory {
+    return produceState(
+        initialValue = SystemUsageHistory.empty(),
+        key1 = intervalMillis,
+        key2 = maxPoints
+    ) {
+        val sampler = SystemUsageSampler(maxPoints)
+        while (isActive) {
+            value = withContext(Dispatchers.IO) {
+                sampler.sampleHistory()
+            }
+            delay(intervalMillis.milliseconds)
+        }
+    }.value
+}
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            usage = monitor.usage
+@Composable
+private fun rememberSystemUsageState(
+    intervalMillis: Long
+): State<SystemUsageInfo?> {
+    return produceState<SystemUsageInfo?>(initialValue = null, key1 = intervalMillis) {
+        val sampler = SystemUsageSampler(1)
+        while (isActive) {
+            value = withContext(Dispatchers.IO) {
+                sampler.sampleLatest()
+            }
             delay(intervalMillis.milliseconds)
         }
     }
-
-    return usage
 }

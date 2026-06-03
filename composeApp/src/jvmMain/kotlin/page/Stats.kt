@@ -1,7 +1,5 @@
 package page
 
-import ProcessManager
-import SystemUsageInfo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,13 +19,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,42 +35,19 @@ import ir.ehsannarmani.compose_charts.models.IndicatorCount
 import ir.ehsannarmani.compose_charts.models.LabelHelperProperties
 import ir.ehsannarmani.compose_charts.models.LabelProperties
 import ir.ehsannarmani.compose_charts.models.Line
-import kotlinx.coroutines.launch
+import state.rememberSystemUsageHistory
 import kotlin.math.roundToInt
-import java.util.function.Consumer
 
 private const val SAMPLE_INTERVAL_MILLIS = 1000L
 private const val MAX_POINTS = 60
 
 @Composable
 fun Stats() {
-    val cpuHistory = remember { mutableStateListOf<Double>() }
-    val memoryHistory = remember { mutableStateListOf<Double>() }
-    val downloadHistory = remember { mutableStateListOf<Double>() }
-    val uploadHistory = remember { mutableStateListOf<Double>() }
-    var latestUsage by remember { mutableStateOf<SystemUsageInfo?>(null) }
-    val scope = rememberCoroutineScope()
-    val processManager = remember { ProcessManager(SAMPLE_INTERVAL_MILLIS) }
-
-    DisposableEffect(processManager) {
-        val listener = Consumer<SystemUsageInfo> { usage ->
-            scope.launch {
-                latestUsage = usage
-                Utils.addSample(cpuHistory, usage.cpuUsagePercent, MAX_POINTS)
-                Utils.addSample(memoryHistory, usage.memoryUsagePercent, MAX_POINTS)
-                Utils.addSample(downloadHistory, usage.downloadBytesPerSecond.toDouble() / 1024.0, MAX_POINTS)
-                Utils.addSample(uploadHistory, usage.uploadBytesPerSecond.toDouble() / 1024.0, MAX_POINTS)
-            }
-        }
-
-        processManager.addListener(listener)
-        processManager.start()
-
-        onDispose {
-            processManager.removeListener(listener)
-            processManager.close()
-        }
-    }
+    val usageHistory = rememberSystemUsageHistory(
+        intervalMillis = SAMPLE_INTERVAL_MILLIS,
+        maxPoints = MAX_POINTS
+    )
+    val latestUsage = usageHistory.latest
 
     val colors = MaterialTheme.colorScheme
     val cpuUsagePercent = latestUsage?.cpuUsagePercent?.roundToInt() ?: 0
@@ -103,7 +71,7 @@ fun Stats() {
                 lines = listOf(
                     Line(
                         label = "CPU",
-                        values = cpuHistory.toList(),
+                        values = usageHistory.cpu,
                         color = SolidColor(colors.primary)
                     )
                 ),
@@ -118,7 +86,7 @@ fun Stats() {
                 lines = listOf(
                     Line(
                         label = "Memory",
-                        values = memoryHistory.toList(),
+                        values = usageHistory.memory,
                         color = SolidColor(colors.secondary)
                     )
                 ),
@@ -141,12 +109,12 @@ fun Stats() {
             lines = listOf(
                 Line(
                     label = "Download",
-                    values = downloadHistory.toList(),
+                    values = usageHistory.downloadKb,
                     color = SolidColor(colors.primary)
                 ),
                 Line(
                     label = "Upload",
-                    values = uploadHistory.toList(),
+                    values = usageHistory.uploadKb,
                     color = SolidColor(colors.tertiary)
                 )
             ),
