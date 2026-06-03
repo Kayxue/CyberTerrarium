@@ -34,6 +34,16 @@ public class SystemUsageMonitor {
         double cpuUsage = processor.getSystemCpuLoadBetweenTicks(previousCpuTicks) * 100.0;
         previousCpuTicks = processor.getSystemCpuLoadTicks();
 
+        long cpuCurrentFrequency = 0L;
+        long[] currentFrequencies = processor.getCurrentFreq();
+        if (currentFrequencies != null && currentFrequencies.length > 0) {
+            long totalFrequency = 0L;
+            for (long frequency : currentFrequencies) {
+                totalFrequency += frequency;
+            }
+            cpuCurrentFrequency = totalFrequency / currentFrequencies.length;
+        }
+
         long totalMemory = memory.getTotal();
         long availableMemory = memory.getAvailable();
         long usedMemory = totalMemory - availableMemory;
@@ -66,6 +76,7 @@ public class SystemUsageMonitor {
 
         return new SystemUsageInfo(
                 cpuUsage,
+                cpuCurrentFrequency,
                 usedMemory,
                 totalMemory,
                 memoryUsage,

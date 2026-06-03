@@ -1,5 +1,6 @@
 public record SystemUsageInfo(
         double cpuUsagePercent,
+        long cpuCurrentFrequencyHz,
         long memoryUsedBytes,
         long memoryTotalBytes,
         double memoryUsagePercent,

@@ -150,7 +150,7 @@ fun Home(){
                                 )
                                 Text("Download:", fontWeight = FontWeight.SemiBold, color = colors.onSurface)
                             }
-                            Text("${formatBytes(usage?.downloadBytesPerSecond ?: 0)}/s", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
+                            Text("${Utils.formatBytes(usage?.downloadBytesPerSecond ?: 0)}/s", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
                         }
                     }
                 }
@@ -174,24 +174,11 @@ fun Home(){
                                 )
                                 Text("Upload:", fontWeight = FontWeight.SemiBold, color = colors.onSurface)
                             }
-                            Text("${formatBytes(usage?.uploadBytesPerSecond ?: 0)}/s", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
+                            Text("${Utils.formatBytes(usage?.uploadBytesPerSecond ?: 0)}/s", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
                         }
                     }
                 }
             }
         }
-    }
-}
-
-private fun formatBytes(bytes: Long): String {
-    val kb = 1024.0
-    val mb = kb * 1024.0
-    val gb = mb * 1024.0
-
-    return when {
-        bytes >= gb -> "%.2f GB".format(bytes / gb)
-        bytes >= mb -> "%.2f MB".format(bytes / mb)
-        bytes >= kb -> "%.2f KB".format(bytes / kb)
-        else -> "$bytes B"
     }
 }
