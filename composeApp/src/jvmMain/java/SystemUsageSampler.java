@@ -21,8 +21,4 @@ public final class SystemUsageSampler {
         history = history.withSample(monitor.getUsage(), maxPoints);
         return history;
     }
-
-    public SystemUsageHistory getHistory() {
-        return history;
-    }
 }

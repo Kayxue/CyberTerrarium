@@ -1,4 +1,3 @@
-import java.util.List;
 import java.util.Locale;
 
 public final class Utils {
@@ -61,15 +60,5 @@ public final class Utils {
             return String.format(Locale.ROOT, "%.0f %s", value, units[unitIndex]);
         }
         return String.format(Locale.ROOT, "%.1f %s", value, units[unitIndex]);
-    }
-
-    public static void addSample(List<Double> target, double value, int maxPoints) {
-        target.add(value);
-        int overflow = target.size() - maxPoints;
-        if (overflow > 0) {
-            for (int i = 0; i < overflow; i++) {
-                target.removeFirst();
-            }
-        }
     }
 }
