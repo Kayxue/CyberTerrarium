@@ -29,6 +29,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -92,14 +93,29 @@ fun FlowGraphView(
     var dragDependencyHandle by remember(selectedFlowId) { mutableStateOf<Offset?>(null) }
     var resizingStageBoundary by remember(selectedFlowId) { mutableStateOf(false) }
     val dependencyBendOverridePx = remember(selectedFlowId) { mutableStateMapOf<String, Offset>() }
+    val pendingJobPlacementById = remember(selectedFlowId) { mutableStateMapOf<String, Pair<String, Int>>() }
 
     val sortedLinks = flowJobLinks.sortedBy { it.position }
     val graphJobs = sortedLinks.mapNotNull { jobsById[it.jobId] }
+    fun effectiveStageId(job: Job): String = pendingJobPlacementById[job.id]?.first ?: job.stageId
+    fun effectiveOrder(job: Job): Int = pendingJobPlacementById[job.id]?.second ?: job.order
+
+    LaunchedEffect(graphJobs, selectedFlowId) {
+        pendingJobPlacementById.keys.toList().forEach { jobId ->
+            val pendingPlacement = pendingJobPlacementById[jobId] ?: return@forEach
+            val job = jobsById[jobId] ?: return@forEach
+            if (job.stageId == pendingPlacement.first && job.order == pendingPlacement.second) {
+                pendingJobPlacementById.remove(jobId)
+            }
+        }
+    }
+
     val stageById = flowStages.associateBy { it.id }
     val stageIds = buildList {
         addAll(flowStages.sortedBy { it.order }.map { it.id })
         for (job in graphJobs) {
-            if (job.stageId !in this) add(job.stageId)
+            val stageId = effectiveStageId(job)
+            if (stageId !in this) add(stageId)
         }
     }.distinct().ifEmpty { listOf("unassigned-stage") }
 
@@ -110,8 +126,8 @@ fun FlowGraphView(
     val actualOrdersByStage = stageIds.associateWith { stageId ->
         graphJobs
             .asSequence()
-            .filter { it.stageId == stageId }
-            .map { it.order }
+            .filter { effectiveStageId(it) == stageId }
+            .map { effectiveOrder(it) }
             .distinct()
             .sorted()
             .toList()
@@ -179,11 +195,15 @@ fun FlowGraphView(
         }
 
         val rowCursorByStageOrder = mutableMapOf<Pair<String, Int>, Int>()
-        val orderedJobs = graphJobs.sortedWith(compareBy<Job> { it.stageId }.thenBy { it.order }.thenBy { it.id })
+        val orderedJobs = graphJobs.sortedWith(
+            compareBy<Job> { effectiveStageId(it) }
+                .thenBy { effectiveOrder(it) }
+                .thenBy { it.id }
+        )
         val baseNodeLayouts = orderedJobs.map { job ->
-            val stageId = job.stageId
+            val stageId = effectiveStageId(job)
             val orders = renderOrdersByStage[stageId] ?: listOf(0)
-            val orderIndex = orders.indexOf(job.order).let { idx -> if (idx < 0) 0 else idx }
+            val orderIndex = orders.indexOf(effectiveOrder(job)).let { idx -> if (idx < 0) 0 else idx }
             val orderValue = orders[orderIndex]
             val (laneStartX, laneEndX) = stageRangeById[stageId] ?: (0f to graphWidthPx)
             val laneWidthPx = laneEndX - laneStartX
@@ -267,6 +287,40 @@ fun FlowGraphView(
                 x = clamped.x.coerceIn(viewportPadding, graphWidthPx - viewportPadding),
                 y = clamped.y.coerceIn(viewportPadding, viewportHeightPx - viewportPadding)
             )
+        }
+
+        fun stageSortOrder(stageId: String): Int {
+            return stageById[stageId]?.order ?: stageIds.indexOf(stageId).takeIf { it >= 0 } ?: 0
+        }
+
+        fun dependencyMoveRejection(jobId: String, targetStageId: String, targetOrder: Int): String? {
+            val targetStageOrder = stageSortOrder(targetStageId)
+            val upstreamNodes = dependencies
+                .asSequence()
+                .filter { it.jobId == jobId }
+                .mapNotNull { nodeById[it.upstreamJobId] }
+                .toList()
+
+            val maxUpstreamOrder = upstreamNodes.maxOfOrNull { it.order } ?: return null
+            if (targetOrder <= maxUpstreamOrder) {
+                return "Job order must be greater than dependency max order $maxUpstreamOrder."
+            }
+
+            val blockingUpstreamStage = upstreamNodes
+                .asSequence()
+                .filter { upstreamNode ->
+                    val upstreamStageOrder = stageSortOrder(upstreamNode.stageId)
+                    targetStageOrder < upstreamStageOrder
+                }
+                .maxWithOrNull(
+                    compareBy<NodeLayout> { stageSortOrder(it.stageId) }
+                        .thenBy { it.order }
+                        .thenBy { it.job.id }
+                )
+
+            return blockingUpstreamStage?.let { upstreamNode ->
+                "Job must be in the same or a later stage than dependency ${upstreamNode.job.id.take(8)}."
+            }
         }
 
         fun resolveDropTarget(dropCenterX: Float, fallbackStageId: String, fallbackOrder: Int): Pair<String, Int> {
@@ -429,7 +483,13 @@ fun FlowGraphView(
                                 .pointerInput(node.job.id) {
                                     detectTapGestures(onTap = { onSelect(GraphSelection.JobSelection(node.job.id)) })
                                 }
-                                .pointerInput(node.job.id, selectedFlowId) {
+                                .pointerInput(
+                                    node.job.id,
+                                    selectedFlowId,
+                                    node.stageId,
+                                    node.order,
+                                    dependencies
+                                ) {
                                     detectDragGestures(
                                         onDragStart = {
                                             val jobId = node.job.id
@@ -453,14 +513,21 @@ fun FlowGraphView(
                                             if (jobId != null && startTopLeft != null) {
                                                 val currentNode = nodeById[jobId]
                                                 if (currentNode != null) {
-                                                    val dropCenterX = startTopLeft.x + dragJobOffset.x + nodeWidthPx / 2f
+                                                    val finalTopLeft = startTopLeft + dragJobOffset
+                                                    val dropCenterX = finalTopLeft.x + nodeWidthPx / 2f
                                                     val (targetStageId, targetOrder) = resolveDropTarget(
                                                         dropCenterX = dropCenterX,
                                                         fallbackStageId = currentNode.stageId,
                                                         fallbackOrder = currentNode.order
                                                     )
                                                     if (targetStageId != currentNode.stageId || targetOrder != currentNode.order) {
-                                                        onJobOrderChanged(jobId, targetStageId, targetOrder)
+                                                        val rejection = dependencyMoveRejection(jobId, targetStageId, targetOrder)
+                                                        if (rejection != null) {
+                                                            onDependencyRejected(rejection)
+                                                        } else {
+                                                            pendingJobPlacementById[jobId] = targetStageId to targetOrder
+                                                            onJobOrderChanged(jobId, targetStageId, targetOrder)
+                                                        }
                                                     }
                                                 }
                                             }
@@ -480,7 +547,7 @@ fun FlowGraphView(
                         ) {
                             Box(modifier = Modifier.fillMaxWidth().background(nodeColor)) {
                                 Text(
-                                    text = "${node.job.title}\n${node.job.id.take(8)}\norder ${node.job.order}",
+                                    text = "${node.job.title}\n${node.job.id.take(8)}\norder ${node.order}",
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.offset { IntOffset(10.dp.roundToPx(), 10.dp.roundToPx()) }
                                 )
