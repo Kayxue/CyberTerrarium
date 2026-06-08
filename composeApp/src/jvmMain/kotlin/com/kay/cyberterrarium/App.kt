@@ -20,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.kay.cyberterrarium.jobmanagement.JobManagement
 import com.kay.cyberterrarium.theme.AppTheme
@@ -32,6 +33,7 @@ import notification.model.Notification
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
@@ -57,11 +59,13 @@ fun App() {
                 if (cpu > 90.0) {
                     consecutiveHighCpu++
                     if (consecutiveHighCpu == 5) {
-                        notifier.notify(
-                            "系統 CPU 負載過高",
-                            "CPU 使用率已連續 5 秒超過 90% (當前: ${cpu.roundToInt()}%)",
-                            Notification.Status.WARNING
-                        )
+                        launch(Dispatchers.IO) {
+                            notifier.notify(
+                                "系統 CPU 負載過高",
+                                "CPU 使用率已連續 5 秒超過 90% (當前: ${cpu.roundToInt()}%)",
+                                Notification.Status.WARNING
+                            )
+                        }
                     }
                 } else {
                     consecutiveHighCpu = 0
@@ -72,11 +76,13 @@ fun App() {
                 if (mem > 90.0) {
                     consecutiveHighMemory++
                     if (consecutiveHighMemory == 5) {
-                        notifier.notify(
-                            "系統記憶體不足",
-                            "記憶體使用率已連續 5 秒超過 90% (當前: ${mem.roundToInt()}%)",
-                            Notification.Status.WARNING
-                        )
+                        launch(Dispatchers.IO) {
+                            notifier.notify(
+                                "系統記憶體不足",
+                                "記憶體使用率已連續 5 秒超過 90% (當前: ${mem.roundToInt()}%)",
+                                Notification.Status.WARNING
+                            )
+                        }
                     }
                 } else {
                     consecutiveHighMemory = 0
@@ -87,11 +93,13 @@ fun App() {
                 if (temp > 80.0) {
                     val now = System.currentTimeMillis()
                     if (now - lastTempNotificationTime > cooldownMillis) {
-                        notifier.notify(
-                            "CPU Overheating",
-                            "CPU temperature reached ${temp.roundToInt()}°C! Please check cooling.",
-                            Notification.Status.ERROR
-                        )
+                        launch(Dispatchers.IO) {
+                            notifier.notify(
+                                "CPU Overheating",
+                                "CPU temperature reached ${temp.roundToInt()}°C! Please check cooling.",
+                                Notification.Status.ERROR
+                            )
+                        }
                         lastTempNotificationTime = now
                     }
                 }
@@ -100,6 +108,7 @@ fun App() {
         }
     }
 
+    val coroutineScope = rememberCoroutineScope()
     var selectedItem by remember { mutableIntStateOf(0) }
     var darkTheme by rememberSaveable { mutableStateOf(false) }
     var showHistoryDialog by remember { mutableStateOf(false) }
@@ -123,7 +132,9 @@ fun App() {
                     Text("Notification History")
                     TextButton(
                         onClick = {
-                            SystemNotification.clearNotificationLogs()
+                            coroutineScope.launch(Dispatchers.IO) {
+                                SystemNotification.clearNotificationLogs()
+                            }
                             historyLogs = emptyList()
                         }
                     ) {
@@ -146,11 +157,23 @@ fun App() {
                     ) {
                         items(historyLogs.size) { index ->
                             val log = historyLogs[index]
-                            val severityColor = when (log.status) {
-                                "ERROR" -> MaterialTheme.colorScheme.error
-                                "WARNING" -> MaterialTheme.colorScheme.tertiary
-                                else -> MaterialTheme.colorScheme.primary
-                            }
+                             val severityColor = if (darkTheme) {
+                                 when (log.status) {
+                                     "ERROR" -> Color(0xFFCF6679) // Red
+                                     "WARNING" -> Color(0xFFFF9800) // Orange
+                                     "INFO" -> Color(0xFFBB86FC) // Purple
+                                     "SUCCESS" -> Color(0xFF81C784) // Green
+                                     else -> Color(0xFFBB86FC)
+                                 }
+                             } else {
+                                 when (log.status) {
+                                     "ERROR" -> Color(0xFFD32F2F) // Red
+                                     "WARNING" -> Color(0xFFE65100) // Dark Orange
+                                     "INFO" -> Color(0xFF7B1FA2) // Purple
+                                     "SUCCESS" -> Color(0xFF388E3C) // Green
+                                     else -> Color(0xFF7B1FA2)
+                                 }
+                             }
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(

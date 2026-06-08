@@ -163,7 +163,7 @@ public class SystemNotification implements AutoCloseable {
         return switch (safe) {
             case ERROR -> TrayIcon.MessageType.ERROR;
             case WARNING -> TrayIcon.MessageType.WARNING;
-            case INFO -> TrayIcon.MessageType.INFO;
+            case INFO, SUCCESS -> TrayIcon.MessageType.INFO;
             case NONE -> TrayIcon.MessageType.NONE;
         };
     }

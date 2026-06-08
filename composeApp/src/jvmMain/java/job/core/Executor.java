@@ -100,7 +100,7 @@ public class Executor {
             SystemNotification.getInstance().notify(
                 "Workflow Success",
                 "Workflow [" + flowId + "] completed successfully",
-                Notification.Status.INFO
+                Notification.Status.SUCCESS
             );
         } else {
             run.setStatus(FlowStatus.ERROR);

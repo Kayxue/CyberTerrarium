@@ -173,7 +173,7 @@ class NotificationTest {
         notifier.notify(
             "Workflow Success",
             "Workflow [test-success-flow] completed successfully",
-            Notification.Status.INFO
+            Notification.Status.SUCCESS
         )
         Thread.sleep(2000)
     }
