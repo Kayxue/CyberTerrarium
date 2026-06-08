@@ -67,7 +67,7 @@ fun JobScriptEditorPage(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Row() {
+        Row {
             AppButton(onClick = onBack) { Text("Back") }
             Spacer(Modifier.weight(1f))
             AppButton(onClick = { scriptContent = defaultTemplate(language) }) { Text("Use Template") }
