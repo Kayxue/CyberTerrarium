@@ -5,7 +5,8 @@ public class Notification {
         INFO,
         NONE,
         WARNING,
-        ERROR
+        ERROR,
+        SUCCESS
     }
 
     private String title = "";

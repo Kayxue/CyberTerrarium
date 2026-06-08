@@ -6,6 +6,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import db.MigrationRunner
+import notification.service.SystemNotification
 import java.awt.Dimension
 
 fun main() {
@@ -13,7 +14,13 @@ fun main() {
 
     application {
         Window(
-            onCloseRequest = ::exitApplication,
+            onCloseRequest = {
+                try {
+                    SystemNotification.getInstance().close()
+                } catch (ignored: Exception) {
+                }
+                exitApplication()
+            },
             title = "Cyber Terrarium",
             state = WindowState(
                 width = 1480.dp,
