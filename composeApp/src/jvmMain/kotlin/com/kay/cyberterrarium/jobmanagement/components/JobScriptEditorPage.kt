@@ -3,10 +3,12 @@ package com.kay.cyberterrarium.jobmanagement.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -65,9 +67,11 @@ fun JobScriptEditorPage(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row() {
             AppButton(onClick = onBack) { Text("Back") }
+            Spacer(Modifier.weight(1f))
             AppButton(onClick = { scriptContent = defaultTemplate(language) }) { Text("Use Template") }
+            Spacer(Modifier.width(8.dp))
             AppButton(onClick = { onSave(job.id, language, scriptContent) }) { Text("Save Script") }
         }
     }

@@ -38,7 +38,6 @@ fun JobManagement() {
     var catalogShowsFlows by remember { mutableStateOf(true) }
     var selection by remember { mutableStateOf<GraphSelection?>(null) }
     var scriptEditorJobId by remember { mutableStateOf<String?>(null) }
-    var message by remember { mutableStateOf("") }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -107,7 +106,7 @@ fun JobManagement() {
                 allFlowStages = snapshot.flowStages
                 currentFlowDependencies = snapshot.dependencies
             } catch (e: Exception) {
-                message = "Refresh failed: ${e.message}"
+                snackbarMessage = "Refresh failed: ${e.message}"
             }
         }
     }
@@ -154,7 +153,7 @@ fun JobManagement() {
                     val createdFlowId = withContext(Dispatchers.IO) {
                         controller.createFlow(flowName)
                     }
-                    message = "Flow created: $flowName ($createdFlowId)"
+                    snackbarMessage = "Flow created: $flowName ($createdFlowId)"
                     selectFlow(createdFlowId)
                     showCreateFlowDialog = false
                 }
@@ -180,7 +179,7 @@ fun JobManagement() {
                             StageFailMode.STOP
                         )
                     }
-                    message = "Stage created: $stageId"
+                    snackbarMessage = "Stage created: $stageId"
                     selectFlow(flowId)
                     showCreateStageDialog = false
                 }
@@ -213,11 +212,11 @@ fun JobManagement() {
                                 position
                             )
                         }
-                        message = "Job created: $title"
+                        snackbarMessage = "Job created: $title"
                         selectFlow(flowId)
                         showCreateJobDialog = false
                     } catch (e: Exception) {
-                        message = "Create job failed: ${e.message}"
+                        snackbarMessage = "Create job failed: ${e.message}"
                     }
                 }
             }
@@ -255,10 +254,10 @@ fun JobManagement() {
                         try {
                             val workers = maxWorkersText.toIntOrNull() ?: 1
                             val run = withContext(Dispatchers.IO) { controller.runFlow(flowId, workers) }
-                            message = "Flow run #${run.id} ${run.status}"
+                            snackbarMessage = "Flow run #${run.id} ${run.status}"
                             refresh()
                         } catch (e: Exception) {
-                            message = "Run failed: ${e.message}"
+                            snackbarMessage = "Run failed: ${e.message}"
                         }
                     }
                 },
@@ -267,10 +266,6 @@ fun JobManagement() {
                 onOpenResults = { currentPage = JobManagementPage.RESULTS },
                 onOpenGraph = { currentPage = JobManagementPage.GRAPH }
             )
-
-            if (message.isNotBlank()) {
-                Text(message, color = MaterialTheme.colorScheme.primary)
-            }
 
             when (currentPage) {
                 JobManagementPage.CATALOG -> {
@@ -294,14 +289,14 @@ fun JobManagement() {
                                     selectedFlowId = null
                                     selection = null
                                 }
-                                message = "Flow deleted: $flowId"
+                                snackbarMessage = "Flow deleted: $flowId"
                                 refresh()
                             }
                         },
                         onDeleteJob = { jobId ->
                             scope.launch {
                                 withContext(Dispatchers.IO) { controller.deleteJob(jobId) }
-                                message = "Job deleted: $jobId"
+                                snackbarMessage = "Job deleted: $jobId"
                                 selection = null
                                 refresh()
                             }
@@ -326,15 +321,15 @@ fun JobManagement() {
                                             withContext(Dispatchers.IO) {
                                                 controller.saveJobDependency(jobId, upstreamJobId)
                                             }
-                                            message = "Dependency added: $upstreamJobId -> $jobId"
+                                            snackbarMessage = "Dependency added: $upstreamJobId -> $jobId"
                                             refresh()
                                         } catch (e: Exception) {
-                                            message = "Add dependency failed: ${e.message}"
+                                            snackbarMessage = "Add dependency failed: ${e.message}"
                                         }
                                     }
                                 },
                                 onDependencyRejected = { reason ->
-                                    message = reason
+                                    snackbarMessage = reason
                                 },
                                 onDependencyControlPointChanged = { jobId, upstreamJobId, bendXDp, bendYDp ->
                                     currentFlowDependencies = currentFlowDependencies.map { dependency ->
@@ -483,7 +478,7 @@ fun JobManagement() {
                                     onDeleteJob = { jobId ->
                                         scope.launch {
                                             withContext(Dispatchers.IO) { controller.deleteJob(jobId) }
-                                            message = "Job deleted: $jobId"
+                                            snackbarMessage = "Job deleted: $jobId"
                                             selection = null
                                             refresh()
                                         }
@@ -501,14 +496,14 @@ fun JobManagement() {
                                                     failMode
                                                 )
                                             }
-                                            message = "Stage updated: $stageId"
+                                            snackbarMessage = "Stage updated: $stageId"
                                             refresh()
                                         }
                                     },
                                     onDeleteStage = { stageId ->
                                         scope.launch {
                                             withContext(Dispatchers.IO) { controller.deleteFlowStage(stageId) }
-                                            message = "Stage deleted: $stageId"
+                                            snackbarMessage = "Stage deleted: $stageId"
                                             selection = null
                                             refresh()
                                         }
@@ -518,7 +513,7 @@ fun JobManagement() {
                                             withContext(Dispatchers.IO) {
                                                 controller.deleteJobDependency(jobId, upstreamJobId)
                                             }
-                                            message = "Dependency deleted: $upstreamJobId -> $jobId"
+                                            snackbarMessage = "Dependency deleted: $upstreamJobId -> $jobId"
                                             selection = null
                                             refresh()
                                         }
@@ -568,11 +563,11 @@ fun JobManagement() {
                                         withContext(Dispatchers.IO) {
                                             controller.updateJobScript(jobId, language, content)
                                         }
-                                        message = "Script updated: $jobId (${language.name})"
+                                        snackbarMessage = "Script updated: $jobId (${language.name})"
                                         refresh()
                                         currentPage = JobManagementPage.GRAPH
                                     } catch (e: Exception) {
-                                        message = "Save script failed: ${e.message}"
+                                        snackbarMessage = "Save script failed: ${e.message}"
                                     }
                                 }
                             }

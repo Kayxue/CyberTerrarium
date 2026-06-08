@@ -1,31 +1,11 @@
 package com.kay.cyberterrarium.jobmanagement.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -192,50 +172,52 @@ private fun StageInspector(
     var barrierMode by remember(selectedStage.id) { mutableStateOf(selectedStage.barrierMode) }
     var failMode by remember(selectedStage.id) { mutableStateOf(selectedStage.failMode) }
 
-    Text("Stage", style = MaterialTheme.typography.titleSmall)
-    Text("ID: ${selectedStage.id}")
-    Text("Flow: ${selectedStage.flowId}")
-    OutlinedTextField(
-        value = name,
-        onValueChange = { name = it },
-        label = { Text("Name") },
-        modifier = Modifier.fillMaxWidth()
-    )
-    OutlinedTextField(
-        value = orderText,
-        onValueChange = { orderText = it },
-        label = { Text("Order") },
-        modifier = Modifier.fillMaxWidth()
-    )
+    Column {
+        Text("Stage", style = MaterialTheme.typography.titleSmall)
+        Text("ID: ${selectedStage.id}")
+        Text("Flow: ${selectedStage.flowId}")
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Name") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = orderText,
+            onValueChange = { orderText = it },
+            label = { Text("Order") },
+            modifier = Modifier.fillMaxWidth()
+        )
 
-    SelectDropdownField(
-        label = "Barrier Mode",
-        value = barrierMode.name,
-        options = BarrierMode.values().map { it.name },
-        onSelect = { selected -> barrierMode = BarrierMode.valueOf(selected) },
-        modifier = Modifier.fillMaxWidth()
-    )
-    SelectDropdownField(
-        label = "Fail Mode",
-        value = failMode.name,
-        options = StageFailMode.values().map { it.name },
-        onSelect = { selected -> failMode = StageFailMode.valueOf(selected) },
-        modifier = Modifier.fillMaxWidth()
-    )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AppButton(
-            onClick = {
-                val order = orderText.toIntOrNull() ?: selectedStage.order
-                onSave(selectedStage.id, name, order, barrierMode, failMode)
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-            modifier = Modifier.weight(1f)
-        ) { Text("Save") }
-        AppButton(
-            onClick = { onDelete(selectedStage.id) },
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier.weight(1f)
-        ) { Text("Delete") }
+        SelectDropdownField(
+            label = "Barrier Mode",
+            value = barrierMode.name,
+            options = BarrierMode.values().map { it.name },
+            onSelect = { selected -> barrierMode = BarrierMode.valueOf(selected) },
+            modifier = Modifier.fillMaxWidth()
+        )
+        SelectDropdownField(
+            label = "Fail Mode",
+            value = failMode.name,
+            options = StageFailMode.values().map { it.name },
+            onSelect = { selected -> failMode = StageFailMode.valueOf(selected) },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AppButton(
+                onClick = {
+                    val order = orderText.toIntOrNull() ?: selectedStage.order
+                    onSave(selectedStage.id, name, order, barrierMode, failMode)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                modifier = Modifier.weight(1f)
+            ) { Text("Save") }
+            AppButton(
+                onClick = { onDelete(selectedStage.id) },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.weight(1f)
+            ) { Text("Delete") }
+        }
     }
 }
 
