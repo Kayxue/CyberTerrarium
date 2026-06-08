@@ -33,15 +33,88 @@ public class SystemNotification implements AutoCloseable {
     public void notify(String title, String info, Notification.Status status) {
         Notification safeModel = new Notification(title, info, status);
         ensureInitialized();
+        saveNotificationToDb(safeText(safeModel.getTitle()), safeText(safeModel.getInfo()), safeModel.getStatus());
         if (!supported || trayIcon == null) {
-            System.out.println("[NOTIFY][" + safeModel.getStatus() + "] "
-                    + safeText(safeModel.getTitle()) + " - " + safeText(safeModel.getInfo()));
             return;
         }
         String safeTitle = safeText(safeModel.getTitle());
         String content = safeText(safeModel.getInfo());
         TrayIcon.MessageType type = toMessageType(safeModel.getStatus());
         trayIcon.displayMessage(safeTitle, content, type);
+    }
+
+    private void saveNotificationToDb(String title, String message, Notification.Status status) {
+        try (java.sql.Connection conn = db.DatabaseFactory.getInstance().getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement("INSERT INTO notification_log (title, message, status) VALUES (?, ?, ?)")) {
+            ps.setString(1, title);
+            ps.setString(2, message);
+            ps.setString(3, status.name());
+            ps.executeUpdate();
+        } catch (java.sql.SQLException ignored) {
+        }
+    }
+
+    public static class LogEntry {
+        private final int id;
+        private final String title;
+        private final String message;
+        private final String status;
+        private final String createdAt;
+
+        public LogEntry(int id, String title, String message, String status, String createdAt) {
+            this.id = id;
+            this.title = title;
+            this.message = message;
+            this.status = status;
+            this.createdAt = createdAt;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public String getCreatedAt() {
+            return createdAt;
+        }
+    }
+
+    public static java.util.List<LogEntry> getNotificationLogs() {
+        java.util.List<LogEntry> list = new java.util.ArrayList<>();
+        try (java.sql.Connection conn = db.DatabaseFactory.getInstance().getConnection();
+             java.sql.Statement stmt = conn.createStatement();
+             java.sql.ResultSet rs = stmt.executeQuery("SELECT id, title, message, status, created_at FROM notification_log ORDER BY id DESC")) {
+            while (rs.next()) {
+                list.add(new LogEntry(
+                    rs.getInt("id"),
+                    rs.getString("title"),
+                    rs.getString("message"),
+                    rs.getString("status"),
+                    rs.getString("created_at")
+                ));
+            }
+        } catch (java.sql.SQLException ignored) {
+        }
+        return list;
+    }
+
+    public static void clearNotificationLogs() {
+        try (java.sql.Connection conn = db.DatabaseFactory.getInstance().getConnection();
+             java.sql.Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("DELETE FROM notification_log");
+        } catch (java.sql.SQLException ignored) {
+        }
     }
 
     @Override
@@ -51,7 +124,6 @@ public class SystemNotification implements AutoCloseable {
                 try {
                     SystemTray.getSystemTray().remove(trayIcon);
                 } catch (Exception ignored) {
-
                 }
             }
             trayIcon = null;

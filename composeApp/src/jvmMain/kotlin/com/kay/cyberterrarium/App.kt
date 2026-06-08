@@ -11,6 +11,11 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Light
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -97,6 +102,106 @@ fun App() {
 
     var selectedItem by remember { mutableIntStateOf(0) }
     var darkTheme by rememberSaveable { mutableStateOf(false) }
+    var showHistoryDialog by remember { mutableStateOf(false) }
+    var historyLogs by remember { mutableStateOf(emptyList<SystemNotification.LogEntry>()) }
+
+    if (showHistoryDialog) {
+        LaunchedEffect(showHistoryDialog) {
+            historyLogs = withContext(Dispatchers.IO) {
+                SystemNotification.getNotificationLogs()
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = { showHistoryDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Notification History")
+                    TextButton(
+                        onClick = {
+                            SystemNotification.clearNotificationLogs()
+                            historyLogs = emptyList()
+                        }
+                    ) {
+                        Text("Clear All", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            text = {
+                if (historyLogs.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(150.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No notifications", style = MaterialTheme.typography.bodyMedium)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(historyLogs.size) { index ->
+                            val log = historyLogs[index]
+                            val severityColor = when (log.status) {
+                                "ERROR" -> MaterialTheme.colorScheme.error
+                                "WARNING" -> MaterialTheme.colorScheme.tertiary
+                                else -> MaterialTheme.colorScheme.primary
+                            }
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .padding(top = 4.dp)
+                                            .background(
+                                                color = severityColor,
+                                                shape = CircleShape
+                                            )
+                                    )
+                                    Column {
+                                        Text(
+                                            text = log.title,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            text = log.message,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            text = log.createdAt,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.outline
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showHistoryDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
 
     val items = listOf("Home", "Stats", "Process", "Jobs")
 
@@ -148,6 +253,12 @@ fun App() {
                     }
 
                     Spacer(Modifier.weight(1f))
+
+                    Box(modifier = Modifier.padding(bottom = 8.dp)){
+                        FloatingActionButton(onClick = { showHistoryDialog = true }){
+                            Icon(Icons.Outlined.Notifications, contentDescription = "Notifications Icon")
+                        }
+                    }
 
                     Box(modifier = Modifier.padding(bottom = 16.dp)){
                         FloatingActionButton(onClick = {darkTheme = !darkTheme}){

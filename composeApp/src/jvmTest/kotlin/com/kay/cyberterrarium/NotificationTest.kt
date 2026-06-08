@@ -177,4 +177,33 @@ class NotificationTest {
         )
         Thread.sleep(2000)
     }
+
+    @Test
+    fun testNotificationDatabasePersistenceAndRetrieval() {
+        SystemNotification.clearNotificationLogs()
+        val logsBefore = SystemNotification.getNotificationLogs()
+        assertTrue(logsBefore.isEmpty())
+
+        val notifier = SystemNotification.getInstance()
+        notifier.notify("Test Persistent Title 1", "Test message info 1", Notification.Status.ERROR)
+        notifier.notify("Test Persistent Title 2", "Test message info 2", Notification.Status.WARNING)
+
+        val logsAfter = SystemNotification.getNotificationLogs()
+        assertTrue(logsAfter.size >= 2)
+
+        val firstEntry = logsAfter[0]
+        val secondEntry = logsAfter[1]
+
+        assertTrue(firstEntry.title == "Test Persistent Title 2")
+        assertTrue(firstEntry.message == "Test message info 2")
+        assertTrue(firstEntry.status == "WARNING")
+
+        assertTrue(secondEntry.title == "Test Persistent Title 1")
+        assertTrue(secondEntry.message == "Test message info 1")
+        assertTrue(secondEntry.status == "ERROR")
+
+        SystemNotification.clearNotificationLogs()
+        val logsCleared = SystemNotification.getNotificationLogs()
+        assertTrue(logsCleared.isEmpty())
+    }
 }

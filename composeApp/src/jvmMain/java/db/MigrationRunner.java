@@ -113,6 +113,15 @@ public final class MigrationRunner {
                 FOREIGN KEY (job_id) REFERENCES job(id) ON DELETE CASCADE
             );
             CREATE INDEX IF NOT EXISTS idx_flow_run_job_run_id ON flow_run_job(run_id)
+        """),
+        new Migration(15, "create notification_log table", """
+            CREATE TABLE IF NOT EXISTS notification_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                message TEXT NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
         """)
     );
     private MigrationRunner() {}
