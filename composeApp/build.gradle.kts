@@ -30,7 +30,7 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
-            implementation("com.github.oshi:oshi-core:6.12.0")
+            implementation("com.github.oshi:oshi-core-ffm:7.3.0")
             implementation("org.xerial:sqlite-jdbc:3.46.1.3")
             runtimeOnly("org.slf4j:slf4j-simple:2.0.17")
         }

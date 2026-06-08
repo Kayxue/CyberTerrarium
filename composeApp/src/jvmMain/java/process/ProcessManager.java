@@ -1,6 +1,6 @@
 package process;
 
-import oshi.SystemInfo;
+import oshi.ffm.SystemInfo;
 import oshi.software.os.OperatingSystem;
 import oshi.software.os.OSProcess;
 

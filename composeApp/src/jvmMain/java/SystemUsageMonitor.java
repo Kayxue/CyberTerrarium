@@ -1,4 +1,4 @@
-import oshi.SystemInfo;
+import oshi.ffm.SystemInfo;
 import oshi.hardware.*;
 
 import java.util.List;
