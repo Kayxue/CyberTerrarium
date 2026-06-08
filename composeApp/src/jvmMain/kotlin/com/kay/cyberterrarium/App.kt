@@ -21,9 +21,80 @@ import com.kay.cyberterrarium.theme.AppTheme
 import page.Home
 import page.Processes
 import page.Stats
+import SystemUsageSampler
+import notification.service.SystemNotification
+import notification.model.Notification
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 @Composable
 fun App() {
+    LaunchedEffect(Unit) {
+        val sampler = SystemUsageSampler(1)
+        val notifier = SystemNotification.getInstance()
+
+        var consecutiveHighCpu = 0
+        var consecutiveHighMemory = 0
+        var lastTempNotificationTime = 0L
+        val cooldownMillis = 60_000L // 1 minute cooldown
+
+        while (isActive) {
+            val usage = withContext(Dispatchers.IO) {
+                sampler.sampleLatest()
+            }
+
+            if (usage != null) {
+                // CPU Usage Check (> 90%)
+                val cpu = usage.cpuUsagePercent
+                if (cpu > 90.0) {
+                    consecutiveHighCpu++
+                    if (consecutiveHighCpu == 5) {
+                        notifier.notify(
+                            "系統 CPU 負載過高",
+                            "CPU 使用率已連續 5 秒超過 90% (當前: ${cpu.roundToInt()}%)",
+                            Notification.Status.WARNING
+                        )
+                    }
+                } else {
+                    consecutiveHighCpu = 0
+                }
+
+                // Memory Usage Check (> 90%)
+                val mem = usage.memoryUsagePercent
+                if (mem > 90.0) {
+                    consecutiveHighMemory++
+                    if (consecutiveHighMemory == 5) {
+                        notifier.notify(
+                            "系統記憶體不足",
+                            "記憶體使用率已連續 5 秒超過 90% (當前: ${mem.roundToInt()}%)",
+                            Notification.Status.WARNING
+                        )
+                    }
+                } else {
+                    consecutiveHighMemory = 0
+                }
+
+                // CPU Temperature Check (> 80°C)
+                val temp = usage.cpuTemperature
+                if (temp > 80.0) {
+                    val now = System.currentTimeMillis()
+                    if (now - lastTempNotificationTime > cooldownMillis) {
+                        notifier.notify(
+                            "CPU Overheating",
+                            "CPU temperature reached ${temp.roundToInt()}°C! Please check cooling.",
+                            Notification.Status.ERROR
+                        )
+                        lastTempNotificationTime = now
+                    }
+                }
+            }
+            delay(1000L)
+        }
+    }
+
     var selectedItem by remember { mutableIntStateOf(0) }
     var darkTheme by rememberSaveable { mutableStateOf(false) }
 

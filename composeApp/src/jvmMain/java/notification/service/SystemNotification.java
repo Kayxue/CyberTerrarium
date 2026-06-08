@@ -7,6 +7,15 @@ import java.net.URL;
 import java.util.Objects;
 
 public class SystemNotification implements AutoCloseable {
+    private static SystemNotification instance;
+
+    public static synchronized SystemNotification getInstance() {
+        if (instance == null) {
+            instance = new SystemNotification();
+        }
+        return instance;
+    }
+
     private static final String DEFAULT_TRAY_ICON_RESOURCE = "notification/tray.png";
     private final Object lock = new Object();
     private TrayIcon trayIcon;

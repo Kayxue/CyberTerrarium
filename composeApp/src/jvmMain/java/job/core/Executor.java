@@ -7,6 +7,8 @@ import job.model.result.FlowStatus;
 import job.model.result.JobStatus;
 import job.repository.IFlowRunRepository;
 import job.repository.IFlowRunJobRepository;
+import notification.service.SystemNotification;
+import notification.model.Notification;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -70,16 +72,51 @@ public class Executor {
                 runJob.setEndedAt(batchResult.getEndedAt());
                 runJob.setDurationMs(batchResult.getDurationMs());
                 flowRunJobRepository.save(runJob);
+
+                if (batchResult.getStatus() == JobStatus.FAILED) {
+                    SystemNotification.getInstance().notify(
+                        "Job Failed",
+                        "Workflow [" + flowId + "], Job [" + getJobTitle(plan, batchResult.getJobId()) + "] failed",
+                        Notification.Status.ERROR
+                    );
+                } else if (batchResult.getStatus() == JobStatus.TIMEOUT) {
+                    SystemNotification.getInstance().notify(
+                        "Job Timeout",
+                        "Workflow [" + flowId + "], Job [" + getJobTitle(plan, batchResult.getJobId()) + "] timed out",
+                        Notification.Status.WARNING
+                    );
+                }
             }
+        }
+
+        try {
+            Thread.sleep(800);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
 
         if (!error && scheduler.allSucceeded(plan.getJobsById().keySet(), statuses)) {
             run.setStatus(FlowStatus.SUCCESS);
+            SystemNotification.getInstance().notify(
+                "Workflow Success",
+                "Workflow [" + flowId + "] completed successfully",
+                Notification.Status.INFO
+            );
         } else {
             run.setStatus(FlowStatus.ERROR);
+            SystemNotification.getInstance().notify(
+                "Workflow Failed",
+                "Workflow [" + flowId + "] failed",
+                Notification.Status.ERROR
+            );
         }
         run.setEndedAt(Instant.now());
         flowRunRepository.updateOneById(run.getId(), run);
         return run;
+    }
+
+    private String getJobTitle(FlowExecutionPlan plan, String jobId) {
+        Job job = plan.getJobsById().get(jobId);
+        return job != null ? job.getTitle() : jobId;
     }
 }
