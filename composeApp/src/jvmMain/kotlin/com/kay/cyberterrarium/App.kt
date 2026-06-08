@@ -114,117 +114,7 @@ fun App() {
     var showHistoryDialog by remember { mutableStateOf(false) }
     var historyLogs by remember { mutableStateOf(emptyList<SystemNotification.LogEntry>()) }
 
-    if (showHistoryDialog) {
-        LaunchedEffect(showHistoryDialog) {
-            historyLogs = withContext(Dispatchers.IO) {
-                SystemNotification.getNotificationLogs()
-            }
-        }
 
-        AlertDialog(
-            onDismissRequest = { showHistoryDialog = false },
-            title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Notification History")
-                    TextButton(
-                        onClick = {
-                            coroutineScope.launch(Dispatchers.IO) {
-                                SystemNotification.clearNotificationLogs()
-                            }
-                            historyLogs = emptyList()
-                        }
-                    ) {
-                        Text("Clear All", color = MaterialTheme.colorScheme.error)
-                    }
-                }
-            },
-            text = {
-                if (historyLogs.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(150.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("No notifications", style = MaterialTheme.typography.bodyMedium)
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(historyLogs.size) { index ->
-                            val log = historyLogs[index]
-                             val severityColor = if (darkTheme) {
-                                 when (log.status) {
-                                     "ERROR" -> Color(0xFFCF6679) // Red
-                                     "WARNING" -> Color(0xFFFF9800) // Orange
-                                     "INFO" -> Color(0xFFBB86FC) // Purple
-                                     "SUCCESS" -> Color(0xFF81C784) // Green
-                                     else -> Color(0xFFBB86FC)
-                                 }
-                             } else {
-                                 when (log.status) {
-                                     "ERROR" -> Color(0xFFD32F2F) // Red
-                                     "WARNING" -> Color(0xFFE65100) // Dark Orange
-                                     "INFO" -> Color(0xFF7B1FA2) // Purple
-                                     "SUCCESS" -> Color(0xFF388E3C) // Green
-                                     else -> Color(0xFF7B1FA2)
-                                 }
-                             }
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .padding(top = 4.dp)
-                                            .background(
-                                                color = severityColor,
-                                                shape = CircleShape
-                                            )
-                                    )
-                                    Column {
-                                        Text(
-                                            text = log.title,
-                                            style = MaterialTheme.typography.titleSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(Modifier.height(4.dp))
-                                        Text(
-                                            text = log.message,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(Modifier.height(4.dp))
-                                        Text(
-                                            text = log.createdAt,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.outline
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = { showHistoryDialog = false }) {
-                    Text("Close")
-                }
-            }
-        )
-    }
 
     val items = listOf("Home", "Stats", "Process", "Jobs")
 
@@ -243,6 +133,121 @@ fun App() {
     )
 
     AppTheme(darkTheme = darkTheme) {
+        if (showHistoryDialog) {
+            LaunchedEffect(showHistoryDialog) {
+                historyLogs = withContext(Dispatchers.IO) {
+                    SystemNotification.getNotificationLogs()
+                }
+            }
+
+            AlertDialog(
+                onDismissRequest = { showHistoryDialog = false },
+                title = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Notification History")
+                        Button(
+                            onClick = {
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    SystemNotification.clearNotificationLogs()
+                                }
+                                historyLogs = emptyList()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        ) {
+                            Text("Clear All")
+                        }
+                    }
+                },
+                text = {
+                    if (historyLogs.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(150.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("No notifications", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(historyLogs.size) { index ->
+                                val log = historyLogs[index]
+                                 val severityColor = if (darkTheme) {
+                                     when (log.status) {
+                                         "ERROR" -> Color(0xFFCF6679) // Red
+                                         "WARNING" -> Color(0xFFFF9800) // Orange
+                                         "INFO" -> Color(0xFFBB86FC) // Purple
+                                         "SUCCESS" -> Color(0xFF81C784) // Green
+                                         else -> Color(0xFFBB86FC)
+                                     }
+                                 } else {
+                                     when (log.status) {
+                                         "ERROR" -> Color(0xFFD32F2F) // Red
+                                         "WARNING" -> Color(0xFFE65100) // Dark Orange
+                                         "INFO" -> Color(0xFF7B1FA2) // Purple
+                                         "SUCCESS" -> Color(0xFF388E3C) // Green
+                                         else -> Color(0xFF7B1FA2)
+                                     }
+                                 }
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .padding(top = 4.dp)
+                                                .background(
+                                                    color = severityColor,
+                                                    shape = CircleShape
+                                                )
+                                        )
+                                        Column {
+                                            Text(
+                                                text = log.title,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                text = log.message,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                text = log.createdAt,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = { showHistoryDialog = false }) {
+                        Text("Close")
+                    }
+                }
+            )
+        }
         Scaffold {
             Row(modifier = Modifier.fillMaxSize().width(32.dp)) {
                 NavigationRail(
