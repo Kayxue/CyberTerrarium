@@ -94,7 +94,7 @@ public class SystemNotification implements AutoCloseable {
         java.util.List<LogEntry> list = new java.util.ArrayList<>();
         try (java.sql.Connection conn = db.DatabaseFactory.getInstance().getConnection();
              java.sql.Statement stmt = conn.createStatement();
-             java.sql.ResultSet rs = stmt.executeQuery("SELECT id, title, message, status, created_at FROM notification_log ORDER BY id DESC")) {
+             java.sql.ResultSet rs = stmt.executeQuery("SELECT id, title, message, status, datetime(created_at, '+8 hours') as created_at FROM notification_log ORDER BY id DESC")) {
             while (rs.next()) {
                 list.add(new LogEntry(
                     rs.getInt("id"),
