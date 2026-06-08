@@ -36,9 +36,24 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.WindowScope
+import androidx.compose.ui.window.WindowState
+import androidx.compose.ui.window.WindowPlacement
+import androidx.compose.foundation.window.WindowDraggableArea
+import androidx.compose.ui.draw.clip
 
 @Composable
-fun App() {
+fun WindowScope.App(
+    windowState: WindowState,
+    onCloseRequest: () -> Unit
+) {
     LaunchedEffect(Unit) {
         val sampler = SystemUsageSampler(1)
         val notifier = SystemNotification.getInstance()
@@ -248,65 +263,192 @@ fun App() {
                 }
             )
         }
-        Scaffold {
-            Row(modifier = Modifier.fillMaxSize().width(32.dp)) {
-                NavigationRail(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxHeight()
-                ) {
-                    Spacer(Modifier.weight(1f))
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                CustomTitleBar(
+                    windowState = windowState,
+                    onCloseRequest = onCloseRequest,
+                    darkTheme = darkTheme
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Scaffold(modifier = Modifier.weight(1f)) {
+                    Row(modifier = Modifier.fillMaxSize().width(32.dp)) {
+                        NavigationRail(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxHeight()
+                        ) {
+                            Spacer(Modifier.weight(1f))
 
-                    items.forEachIndexed { index, item ->
-                        NavigationRailItem(
-                            icon = {
-                                Icon(
-                                    imageVector = if (selectedItem == index) selectedIcons[index] else unselectedIcons[index],
-                                    contentDescription = item,
-                                    modifier = Modifier.size(24.dp)
+                            items.forEachIndexed { index, item ->
+                                NavigationRailItem(
+                                    icon = {
+                                        Icon(
+                                            imageVector = if (selectedItem == index) selectedIcons[index] else unselectedIcons[index],
+                                            contentDescription = item,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    },
+                                    label = { Text(item) },
+                                    selected = selectedItem == index,
+                                    modifier = Modifier.padding(top = if (index == 0) 16.dp else 8.dp),
+                                    onClick = { selectedItem = index },
+                                    colors = NavigationRailItemDefaults.colors(
+                                        selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 )
-                            },
-                            label = { Text(item) },
-                            selected = selectedItem == index,
-                            modifier = Modifier.padding(top = if (index == 0) 16.dp else 8.dp),
-                            onClick = { selectedItem = index },
-                            colors = NavigationRailItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        )
-                    }
+                            }
 
-                    Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.weight(1f))
 
-                    Box(modifier = Modifier.padding(bottom = 8.dp)){
-                        FloatingActionButton(onClick = { showHistoryDialog = true }){
-                            Icon(Icons.Outlined.Notifications, contentDescription = "Notifications Icon")
+                            Box(modifier = Modifier.padding(bottom = 8.dp)){
+                                FloatingActionButton(onClick = { showHistoryDialog = true }){
+                                    Icon(Icons.Outlined.Notifications, contentDescription = "Notifications Icon")
+                                }
+                            }
+
+                            Box(modifier = Modifier.padding(bottom = 16.dp)){
+                                FloatingActionButton(onClick = {darkTheme = !darkTheme}){
+                                    Icon(Icons.Outlined.Light, contentDescription = "Dark Icon")
+                                }
+                            }
                         }
-                    }
 
-                    Box(modifier = Modifier.padding(bottom = 16.dp)){
-                        FloatingActionButton(onClick = {darkTheme = !darkTheme}){
-                            Icon(Icons.Outlined.Light, contentDescription = "Dark Icon")
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxSize(),
+                        ) {
+                            when (selectedItem) {
+                                0 -> Home()
+                                1 -> Stats()
+                                2 -> Processes()
+                                3 -> JobManagement()
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+}
 
+@Composable
+fun WindowScope.CustomTitleBar(
+    windowState: WindowState,
+    onCloseRequest: () -> Unit,
+    darkTheme: Boolean
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        WindowDraggableArea(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "CYBER",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (darkTheme) Color(0xFF38BDF8) else Color(0xFF0284C7)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "TERRARIUM",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxHeight(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val minInteraction = remember { MutableInteractionSource() }
+            val minHovered by minInteraction.collectIsHoveredAsState()
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(48.dp)
+                    .background(if (minHovered) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else Color.Transparent)
+                    .clickable(
+                        interactionSource = minInteraction,
+                        indication = null
+                    ) {
+                        windowState.isMinimized = true
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(Modifier.size(10.dp, 1.dp).background(MaterialTheme.colorScheme.onSurface))
+            }
+
+            val maxInteraction = remember { MutableInteractionSource() }
+            val maxHovered by maxInteraction.collectIsHoveredAsState()
+            val isMaximized = windowState.placement == WindowPlacement.Maximized
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(48.dp)
+                    .background(if (maxHovered) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else Color.Transparent)
+                    .clickable(
+                        interactionSource = maxInteraction,
+                        indication = null
+                    ) {
+                        windowState.placement = if (isMaximized) WindowPlacement.Floating else WindowPlacement.Maximized
+                    },
+                contentAlignment = Alignment.Center
+            ) {
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxSize(),
-                ) {
-                    when (selectedItem) {
-                        0 -> Home()
-                        1 -> Stats()
-                        2 -> Processes()
-                        3 -> JobManagement()
-                    }
-                }
+                    Modifier
+                        .size(9.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.onSurface)
+                )
+            }
+
+            val closeInteraction = remember { MutableInteractionSource() }
+            val closeHovered by closeInteraction.collectIsHoveredAsState()
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(48.dp)
+                    .background(if (closeHovered) Color(0xFFEF4444) else Color.Transparent)
+                    .clickable(
+                        interactionSource = closeInteraction,
+                        indication = null
+                    ) {
+                        onCloseRequest()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = if (closeHovered) Color.White else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
     }

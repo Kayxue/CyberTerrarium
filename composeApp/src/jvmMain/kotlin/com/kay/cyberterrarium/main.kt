@@ -9,10 +9,16 @@ import db.MigrationRunner
 import notification.service.SystemNotification
 import java.awt.Dimension
 
+import androidx.compose.ui.window.rememberWindowState
+
 fun main() {
     MigrationRunner.migrate()
 
     application {
+        val windowState = rememberWindowState(
+            width = 1480.dp,
+            height = 760.dp
+        )
         Window(
             onCloseRequest = {
                 try {
@@ -22,15 +28,23 @@ fun main() {
                 exitApplication()
             },
             title = "Cyber Terrarium",
-            state = WindowState(
-                width = 1480.dp,
-                height = 760.dp
-            )
+            state = windowState,
+            undecorated = true,
+            transparent = true
         ) {
             SideEffect {
                 window.minimumSize = Dimension(1480, 760)
             }
-            App()
+            App(
+                windowState = windowState,
+                onCloseRequest = {
+                    try {
+                        SystemNotification.getInstance().close()
+                    } catch (ignored: Exception) {
+                    }
+                    exitApplication()
+                }
+            )
         }
     }
 }
