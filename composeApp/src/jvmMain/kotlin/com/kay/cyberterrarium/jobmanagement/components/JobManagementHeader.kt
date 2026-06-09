@@ -3,6 +3,8 @@ package com.kay.cyberterrarium.jobmanagement.components
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -64,16 +66,39 @@ fun JobManagementHeader(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        AppButton(
-            onClick = { createExpanded = !createExpanded },
-            variant = AppButtonVariant.MUTED,
-            modifier = Modifier.widthIn(min = 44.dp, max = 52.dp)
-        ) { Text("+") }
+        Box {
+            AppButton(
+                onClick = { createExpanded = true },
+                variant = AppButtonVariant.MUTED,
+                modifier = Modifier.widthIn(min = 44.dp, max = 52.dp)
+            ) { Text("+") }
 
-        if (createExpanded) {
-            AppButton(onClick = onOpenCreateFlow, variant = AppButtonVariant.MUTED) { Text("Flow") }
-            AppButton(onClick = onOpenCreateStage, variant = AppButtonVariant.MUTED) { Text("Stage") }
-            AppButton(onClick = onOpenCreateJob, variant = AppButtonVariant.MUTED) { Text("Job") }
+            DropdownMenu(
+                expanded = createExpanded,
+                onDismissRequest = { createExpanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Flow") },
+                    onClick = {
+                        createExpanded = false
+                        onOpenCreateFlow()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Stage") },
+                    onClick = {
+                        createExpanded = false
+                        onOpenCreateStage()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Job") },
+                    onClick = {
+                        createExpanded = false
+                        onOpenCreateJob()
+                    }
+                )
+            }
         }
 
         AppButton(
