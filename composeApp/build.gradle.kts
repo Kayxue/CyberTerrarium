@@ -52,6 +52,12 @@ compose.desktop {
             windows {
                 iconFile.set(project.file("src/jvmMain/resources/notification/tray.ico"))
             }
+
+            macOS {
+                iconFile.set(project.file("src/jvmMain/resources/app_icon.icns"))
+                bundleID = "com.kay.cyberterrarium"
+                packageName = "Cyber Terrarium"
+            }
         }
 
         buildTypes.release.proguard {
