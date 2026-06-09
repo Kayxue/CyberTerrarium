@@ -46,6 +46,10 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "com.kay.cyberterrarium"
             packageVersion = "1.0.0"
+
+            buildTypes.release.proguard{
+                version.set("7.9.1")
+            }
         }
     }
 }
