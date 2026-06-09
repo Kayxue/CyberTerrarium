@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -173,29 +174,38 @@ private fun UsageChartCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (maxValue != null) {
-                LineChart(
-                    modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-                    data = lines,
-                    animationMode = AnimationMode.None,
-                    animationDelay = 0,
-                    indicatorProperties = indicatorProperties,
-                    labelProperties = LabelProperties(enabled = false),
-                    labelHelperProperties = LabelHelperProperties(enabled = false),
-                    minValue = 0.0,
-                    maxValue = maxValue
-                )
+            if (lines.any { it.values.isNotEmpty() }) {
+                if (maxValue != null) {
+                    LineChart(
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                        data = lines,
+                        animationMode = AnimationMode.None,
+                        animationDelay = 0,
+                        indicatorProperties = indicatorProperties,
+                        labelProperties = LabelProperties(enabled = false),
+                        labelHelperProperties = LabelHelperProperties(enabled = false),
+                        minValue = 0.0,
+                        maxValue = maxValue
+                    )
+                } else {
+                    LineChart(
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                        data = lines,
+                        animationMode = AnimationMode.None,
+                        animationDelay = 0,
+                        indicatorProperties = indicatorProperties,
+                        labelProperties = LabelProperties(enabled = false),
+                        labelHelperProperties = LabelHelperProperties(enabled = false),
+                        minValue = 0.0
+                    )
+                }
             } else {
-                LineChart(
+                Box(
                     modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-                    data = lines,
-                    animationMode = AnimationMode.None,
-                    animationDelay = 0,
-                    indicatorProperties = indicatorProperties,
-                    labelProperties = LabelProperties(enabled = false),
-                    labelHelperProperties = LabelHelperProperties(enabled = false),
-                    minValue = 0.0
-                )
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = colors.primary)
+                }
             }
 
             if (legendItems.isNotEmpty()) {

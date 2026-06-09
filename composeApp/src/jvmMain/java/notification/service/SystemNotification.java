@@ -145,7 +145,7 @@ public class SystemNotification implements AutoCloseable {
                 }
                 URL url = Thread.currentThread().getContextClassLoader().getResource(SystemNotification.DEFAULT_TRAY_ICON_RESOURCE);
                 Image trayImage = java.awt.Toolkit.getDefaultToolkit().getImage(url);
-                String appName = "CyberTerrarium";
+                String appName = "Cyber Terrarium";
                 TrayIcon icon = new TrayIcon(trayImage, appName);
                 icon.setImageAutoSize(true);
                 SystemTray.getSystemTray().add(icon);

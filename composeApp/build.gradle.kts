@@ -44,12 +44,19 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.kay.cyberterrarium"
-            packageVersion = "1.0.0"
+            packageName = "Cyber Terrarium"
+            packageVersion = "1.0.5"
 
-            buildTypes.release.proguard{
-                version.set("7.9.1")
+            modules("java.sql", "java.naming", "java.management", "jdk.unsupported")
+
+            windows {
+                iconFile.set(project.file("src/jvmMain/resources/notification/tray.ico"))
             }
+        }
+
+        buildTypes.release.proguard {
+            version.set("7.9.1")
+            configurationFiles.from(project.file("proguard-rules.pro"))
         }
     }
 }

@@ -8,7 +8,7 @@ import androidx.compose.ui.window.application
 import db.MigrationRunner
 import notification.service.SystemNotification
 import java.awt.Dimension
-
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.rememberWindowState
 
 fun main() {
@@ -28,6 +28,7 @@ fun main() {
                 exitApplication()
             },
             title = "Cyber Terrarium",
+            icon = painterResource("notification/tray.png"),
             state = windowState,
             undecorated = true,
             transparent = true
