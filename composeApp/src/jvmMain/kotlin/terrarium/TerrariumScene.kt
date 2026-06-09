@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.geometry.Offset
@@ -409,6 +410,7 @@ fun TerrariumScene(
 
         Column(
             modifier = Modifier
+                .align(Alignment.TopEnd)
                 .padding(12.dp)
                 .background(Color.Black.copy(alpha = 0.22f), RoundedCornerShape(4.dp))
                 .padding(horizontal = 9.dp, vertical = 6.dp)

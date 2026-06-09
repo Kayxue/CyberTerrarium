@@ -188,7 +188,7 @@ job package。
 - `TIMEOUT`：健康度最低，風險最高。
 - `RUNNING`：活動度高，壓力偏高。
 - Disabled job：狀態為 `INACTIVE`。
-- 沒有執行結果：狀態為 `UNKNOWN`，健康值中等。
+- 尚無執行結果的啟用 Job：視為 `IDLE`，狀態為 `HEALTHY`。
 - Job priority：轉成 `visualHint.importance`，供 View 選取最多 100 隻魚。
 
 目前 job 執行架構主要在 job 結束後保存結果，因此 terrarium 現階段主要呈現

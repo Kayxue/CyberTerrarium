@@ -50,20 +50,48 @@ internal fun DrawScope.drawTerrariumFish(
     )
     val palette = if (fish.kind == TerrariumCreatureKind.JOB) jobPalette else processPalette
     val base = palette[abs(fish.visualHint.colorSeed.toLong()).rem(palette.size).toInt()]
-    val damage = ((60 - fish.health).coerceAtLeast(0) / 60f).coerceIn(0f, 1f)
-    val sickTarget = if (fish.status == TerrariumCreatureStatus.SICK) {
-        Color(0xFF797D70)
-    } else {
-        Color(0xFF87959A)
+    val healthRatio = (fish.health / 100f).coerceIn(0f, 1f)
+    val stressRatio = (fish.stress / 100f).coerceIn(0f, 1f)
+    val statusTint = when (fish.status) {
+        TerrariumCreatureStatus.HEALTHY -> Color(0xFFF5FBFF)
+        TerrariumCreatureStatus.STRESSED -> Color(0xFFD59A45)
+        TerrariumCreatureStatus.SICK -> Color(0xFF737A6D)
+        TerrariumCreatureStatus.INACTIVE -> Color(0xFF747A7D)
+        TerrariumCreatureStatus.UNKNOWN -> Color(0xFF87929A)
     }
-    val bodyColor = Color(
-        red = base.red * (1f - damage) + sickTarget.red * damage,
-        green = base.green * (1f - damage) + sickTarget.green * damage,
-        blue = base.blue * (1f - damage) + sickTarget.blue * damage,
-        alpha = (0.58f + fish.health / 240f).coerceIn(0.58f, 1f) * normalizedOpacity
+    val statusBlend = when (fish.status) {
+        TerrariumCreatureStatus.HEALTHY -> 0.08f
+        TerrariumCreatureStatus.STRESSED -> 0.18f + stressRatio * 0.16f
+        TerrariumCreatureStatus.SICK -> 0.50f + (1f - healthRatio) * 0.22f
+        TerrariumCreatureStatus.INACTIVE -> 0.62f
+        TerrariumCreatureStatus.UNKNOWN -> 0.38f
+    }
+    val tintedBase = base.mixWith(statusTint, statusBlend)
+    val brightness = when (fish.status) {
+        TerrariumCreatureStatus.HEALTHY -> 0.88f + healthRatio * 0.18f
+        TerrariumCreatureStatus.STRESSED -> 0.76f + healthRatio * 0.14f
+        TerrariumCreatureStatus.SICK -> 0.58f + healthRatio * 0.18f
+        TerrariumCreatureStatus.INACTIVE -> 0.52f
+        TerrariumCreatureStatus.UNKNOWN -> 0.68f
+    }
+    val bodyColor = tintedBase.scaleBrightness(brightness).copy(
+        alpha = when (fish.status) {
+            TerrariumCreatureStatus.INACTIVE -> 0.48f
+            TerrariumCreatureStatus.SICK -> 0.68f + healthRatio * 0.18f
+            TerrariumCreatureStatus.UNKNOWN -> 0.72f
+            else -> 0.82f + healthRatio * 0.18f
+        } * normalizedOpacity
     )
-    val finColor = bodyColor.copy(alpha = bodyColor.alpha * 0.78f)
-    val height = width * 0.52f
+    val finColor = bodyColor
+        .mixWith(Color.Black, if (fish.status == TerrariumCreatureStatus.HEALTHY) 0.08f else 0.18f)
+        .copy(alpha = bodyColor.alpha * 0.86f)
+    val height = width * when (fish.status) {
+        TerrariumCreatureStatus.HEALTHY -> 0.54f
+        TerrariumCreatureStatus.STRESSED -> 0.51f
+        TerrariumCreatureStatus.SICK -> 0.47f
+        TerrariumCreatureStatus.INACTIVE -> 0.45f
+        TerrariumCreatureStatus.UNKNOWN -> 0.49f
+    }
 
     withTransform({
         translate(center.x, center.y)
@@ -79,7 +107,11 @@ internal fun DrawScope.drawTerrariumFish(
             size = Size(width * 0.62f, height * 0.64f)
         )
 
-        val tailDrop = if (fish.status == TerrariumCreatureStatus.SICK) height * 0.14f else 0f
+        val tailDrop = when (fish.status) {
+            TerrariumCreatureStatus.SICK -> height * 0.16f
+            TerrariumCreatureStatus.INACTIVE -> height * 0.22f
+            else -> 0f
+        }
         val tail = Path().apply {
             moveTo(-width * 0.28f, 0f)
             lineTo(-width * 0.52f, -height * 0.35f + tailDrop)
@@ -137,3 +169,20 @@ internal fun DrawScope.drawTerrariumFish(
         )
     }
 }
+
+private fun Color.mixWith(other: Color, amount: Float): Color {
+    val ratio = amount.coerceIn(0f, 1f)
+    return Color(
+        red = red + (other.red - red) * ratio,
+        green = green + (other.green - green) * ratio,
+        blue = blue + (other.blue - blue) * ratio,
+        alpha = alpha + (other.alpha - alpha) * ratio
+    )
+}
+
+private fun Color.scaleBrightness(factor: Float): Color = Color(
+    red = (red * factor).coerceIn(0f, 1f),
+    green = (green * factor).coerceIn(0f, 1f),
+    blue = (blue * factor).coerceIn(0f, 1f),
+    alpha = alpha
+)

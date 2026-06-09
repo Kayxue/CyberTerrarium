@@ -59,6 +59,16 @@ fun JobManagement() {
             allFlowRuns.mapTo(this) { it.flowId }
         }.filter { it.isNotBlank() }.sorted()
     }
+    val flowNameById = remember(allFlowStages) {
+        allFlowStages
+            .groupBy { it.flowId }
+            .mapValues { (flowId, stages) ->
+                stages.firstOrNull { it.id == "$flowId-stage-1" }
+                    ?.displayName
+                    ?.takeIf { it.isNotBlank() }
+                    ?: flowId
+            }
+    }
 
     val currentFlowLinks = remember(selectedFlowId, allFlowLinks) {
         val id = selectedFlowId
@@ -241,6 +251,7 @@ fun JobManagement() {
                 currentPageIsResults = currentPage == JobManagementPage.RESULTS,
                 selectedFlowId = selectedFlowId,
                 flowIds = flowIds,
+                flowNameById = flowNameById,
                 maxWorkersText = maxWorkersText,
                 onMaxWorkersChange = { maxWorkersText = it },
                 onSelectFlow = { selectFlow(it) },
@@ -276,6 +287,7 @@ fun JobManagement() {
                         flowLinks = allFlowLinks,
                         flowStages = allFlowStages,
                         flowRuns = allFlowRuns,
+                        flowNameById = flowNameById,
                         onShowFlows = { catalogShowsFlows = true },
                         onShowJobs = { catalogShowsFlows = false },
                         onSelectFlow = {

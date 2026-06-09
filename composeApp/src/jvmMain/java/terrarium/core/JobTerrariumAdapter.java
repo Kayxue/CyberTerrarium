@@ -81,7 +81,9 @@ public final class JobTerrariumAdapter implements TerrariumResourceAdapter {
         String jobId = job.getId() == null ? "" : job.getId();
         String label = job.getTitle() == null || job.getTitle().isBlank() ? jobId : job.getTitle();
         boolean enabled = job.isEnabled();
-        JobStatus latestStatus = latest == null ? null : latest.getStatus();
+        JobStatus latestStatus = latest == null || latest.getStatus() == null
+            ? JobStatus.IDLE
+            : latest.getStatus();
         int health = healthFor(enabled, latestStatus);
         int stress = stressFor(enabled, latestStatus);
         int activity = activityFor(enabled, latestStatus);

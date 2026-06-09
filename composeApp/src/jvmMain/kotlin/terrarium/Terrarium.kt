@@ -10,6 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,15 +23,21 @@ import terrarium.model.TerrariumFishState
 @Composable
 fun Terrarium(
     systemUsage: SystemUsageInfo?,
+    maxVisibleFish: Int = 100,
+    onAvailableFishChanged: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val snapshot = rememberTerrariumSnapshot(systemUsage)
     var selectedFish by remember { mutableStateOf<TerrariumFishState?>(null) }
 
+    LaunchedEffect(snapshot.fish.size) {
+        onAvailableFishChanged(snapshot.fish.size)
+    }
+
     TerrariumScene(
         snapshot = snapshot,
         modifier = modifier,
-        maxVisibleFish = 100,
+        maxVisibleFish = maxVisibleFish.coerceIn(0, snapshot.fish.size),
         onFishClick = { selectedFish = it }
     )
 

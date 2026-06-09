@@ -130,6 +130,23 @@ class TerrariumContractTest {
         )
     }
 
+    @Test
+    fun enabledJobWithoutRunHistoryIsHealthyAndIdle() {
+        val idleJob = job("idle-job", "Idle job", enabled = true)
+        val controller = FakeJobController(
+            jobs = listOf(idleJob),
+            runs = emptyList(),
+            runJobs = emptyList()
+        )
+
+        val snapshot = TerrariumController().getSnapshot(listOf(JobTerrariumAdapter(controller)))
+        val fish = snapshot.fish.single()
+
+        assertEquals(TerrariumCreatureStatus.HEALTHY, fish.status)
+        assertTrue(fish.health >= 70)
+        assertTrue(fish.stress < 30)
+    }
+
     private fun job(id: String, title: String, enabled: Boolean): Job {
         return Job().apply {
             this.id = id

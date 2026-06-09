@@ -19,6 +19,7 @@ fun JobManagementHeader(
     currentPageIsResults: Boolean,
     selectedFlowId: String?,
     flowIds: List<String>,
+    flowNameById: Map<String, String>,
     maxWorkersText: String,
     onMaxWorkersChange: (String) -> Unit,
     onSelectFlow: (String) -> Unit,
@@ -53,7 +54,14 @@ fun JobManagementHeader(
                     onSelectFlow(selected)
                 }
             },
-            modifier = Modifier.width(230.dp)
+            modifier = Modifier.width(230.dp),
+            optionLabel = { flowId ->
+                if (flowId == "No Flows" || flowId == "Select Flow") {
+                    flowId
+                } else {
+                    flowNameById[flowId]?.takeIf { it.isNotBlank() } ?: flowId
+                }
+            }
         )
 
         OutlinedTextField(
