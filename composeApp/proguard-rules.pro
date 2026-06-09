@@ -1,19 +1,37 @@
-# Disable optimization to prevent bytecode VerifyErrors (Inconsistent stackmap frames in Compose/Kotlin lambdas)
+# ============================================================
+# CyberTerrarium ProGuard Rules
+# ============================================================
+
+# Disable optimization, shrinking, and preverification
 -dontoptimize
+-dontshrink
+-dontpreverify
 
-# Suppress warnings and keep classes for OSHI core FFM which interacts with native OS APIs
+# Suppress warnings for unresolved JDK/JRE and other library classes.
+-dontwarn java.**
+-dontwarn javax.**
+-dontwarn sun.**
+-dontwarn com.sun.**
 -dontwarn oshi.**
--keep class oshi.** { *; }
-
-# Keep SQLite driver classes to prevent dynamic loading failure at runtime
 -dontwarn org.sqlite.**
+-dontwarn org.slf4j.**
+-dontwarn kotlin.**
+
+# OSHI: Windows-specific platform classes absent on macOS/Linux
+-dontwarn oshi.hardware.platform.windows.**
+-dontwarn oshi.software.os.windows.**
+-dontwarn oshi.driver.windows.**
+-dontwarn oshi.platform.windows.**
+-dontwarn com.profesorfalken.jpowershell.**
+-dontwarn com.sun.jna.**
+-dontwarn net.java.dev.jna.**
+
+# OSHI: dynamically referenced Windows-only hardware monitor
+-dontwarn io.github.pandalxb.jlibrehardwaremonitor.**
+
+# Keep rules to prevent stripping classes required for runtime or database reflection
+-keep class oshi.** { *; }
 -keep class org.sqlite.** { *; }
-
-# Ignore unresolved references to JDK 25 FFM / MethodHandle/VarHandle APIs in library classes
--dontwarn java.lang.invoke.**
--dontwarn java.lang.foreign.**
-
-# Keep all job model classes and their fields/methods intact for database mapping and reflection
 -keep class job.model.** { *; }
 
 # Keep all enum class members to prevent "is not an enum class" reflection failures at runtime
@@ -21,3 +39,6 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
+
+# Suppress remaining warnings
+-ignorewarnings

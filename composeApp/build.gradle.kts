@@ -54,9 +54,12 @@ compose.desktop {
             }
         }
 
-        buildTypes.release.proguard {
-            version.set("7.9.1")
-            configurationFiles.from(project.file("proguard-rules.pro"))
+            modules("java.sql", "java.naming", "java.management", "java.instrument", "java.security.jgss")
+
+            buildTypes.release.proguard {
+                version.set("7.9.1")
+                configurationFiles.from(project.file("proguard-rules.pro"))
+            }
         }
     }
 }
