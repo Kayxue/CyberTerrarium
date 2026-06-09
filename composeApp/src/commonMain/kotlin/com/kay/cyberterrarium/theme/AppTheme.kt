@@ -30,7 +30,7 @@ private val WarmLightColors = lightColorScheme(
     onTertiaryContainer = Color(0xFF21342F),
     background = Color(0xFFF7F1E8),
     onBackground = Color(0xFF2A2622),
-    surface = Color(0xFFFFF9F2),
+    surface = Color(0xFFFFFFFF),
     onSurface = Color(0xFF2A2622),
     surfaceVariant = Color(0xFFE9DED0),
     onSurfaceVariant = Color(0xFF5F564E),
@@ -39,7 +39,7 @@ private val WarmLightColors = lightColorScheme(
     onError = Color.White,
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF410002),
-    surfaceTint = Color(0xFF6B7D5E)
+    surfaceTint = Color.Transparent
 )
 
 private val DeepNightColors = darkColorScheme(

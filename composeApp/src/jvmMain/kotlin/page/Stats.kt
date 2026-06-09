@@ -103,7 +103,7 @@ fun Stats() {
                     append("Down ${Utils.formatSpeed(latestUsage?.downloadBytesPerSecond ?: 0)}")
                 }
                 append(" • ")
-                withStyle(SpanStyle(color = colors.tertiary)) {
+                withStyle(SpanStyle(color = colors.secondary)) {
                     append("Up ${Utils.formatSpeed(latestUsage?.uploadBytesPerSecond ?: 0)}")
                 }
             },
@@ -116,13 +116,13 @@ fun Stats() {
                 Line(
                     label = "Upload",
                     values = usageHistory.uploadBytesPerSecond,
-                    color = SolidColor(colors.tertiary)
+                    color = SolidColor(colors.secondary)
                 )
             ),
             indicatorFormatter = { Utils.formatSpeed(it.roundToLong()) },
             legendItems = listOf(
                 LegendItem(label = "Download", color = colors.primary),
-                LegendItem(label = "Upload", color = colors.tertiary)
+                LegendItem(label = "Upload", color = colors.secondary)
             ),
             modifier = Modifier.weight(1f)
         )
