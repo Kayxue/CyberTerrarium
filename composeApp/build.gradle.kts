@@ -66,3 +66,9 @@ compose.desktop {
         }
     }
 }
+
+tasks.withType<Test> {
+    testLogging {
+        events("passed", "skipped", "failed")
+    }
+}
