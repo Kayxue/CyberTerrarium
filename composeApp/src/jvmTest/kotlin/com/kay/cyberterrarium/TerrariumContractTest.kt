@@ -1,4 +1,4 @@
-package terrarium
+package com.kay.cyberterrarium
 
 import job.controller.IJobController
 import job.model.Job
