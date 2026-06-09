@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ fun FlowJobCatalogPage(
     flowLinks: List<FlowJobLink>,
     flowStages: List<FlowStage>,
     flowRuns: List<FlowRun>,
+    flowNameById: Map<String, String>,
     onShowFlows: () -> Unit,
     onShowJobs: () -> Unit,
     onSelectFlow: (String) -> Unit,
@@ -50,24 +52,25 @@ fun FlowJobCatalogPage(
             val stageCountByFlow = flowStages.groupingBy { it.flowId }.eachCount()
             val jobCountByFlow = flowLinks.groupingBy { it.flowId }.eachCount()
             val runCountByFlow = flowRuns.groupingBy { it.flowId }.eachCount()
-            val flowNameById = flowStages
-                .groupBy { it.flowId }
-                .mapValues { (_, stages) ->
-                    stages.minByOrNull { it.order }?.displayName ?: ""
-                }
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(flowIds) { flowId ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text(flowId, style = MaterialTheme.typography.titleMedium)
-                                if (!flowNameById[flowId].isNullOrBlank()) {
-                                    Text("Name: ${flowNameById[flowId]}")
-                                }
+                                Text(
+                                    flowNameById[flowId] ?: flowId,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text("ID: $flowId")
                                 Text("Jobs: ${jobCountByFlow[flowId] ?: 0}")
                                 Text("Stages: ${stageCountByFlow[flowId] ?: 0}")
                                 Text("Runs: ${runCountByFlow[flowId] ?: 0}")
@@ -83,7 +86,12 @@ fun FlowJobCatalogPage(
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(jobs) { job ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween

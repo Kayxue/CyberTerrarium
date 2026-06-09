@@ -195,7 +195,11 @@ public class FlowRunJobRepository implements IFlowRunJobRepository {
     }
 
     private static FlowRunJob mapRunJob(ResultSet rs) throws SQLException {
-        FlowRunJob record = new FlowRunJob();
+        FlowRunJob record = new FlowRunJob(
+            rs.getLong("run_id"),
+            rs.getString("job_id"),
+            JobStatus.valueOf(rs.getString("status"))
+        );
         record.setRunId(rs.getLong("run_id"));
         record.setJobId(rs.getString("job_id"));
         record.setStatus(JobStatus.valueOf(rs.getString("status")));

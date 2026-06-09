@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -415,13 +414,6 @@ fun FlowGraphView(
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.Center)
-                                    .fillMaxHeight()
-                                    .width(2.dp)
-                                    .background(colors.outline.copy(alpha = 0.6f))
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.Center)
                                     .width(10.dp)
                                     .height(46.dp)
                                     .background(
@@ -441,16 +433,6 @@ fun FlowGraphView(
                     }
 
                     Canvas(modifier = Modifier.fillMaxSize()) {
-                        stageIds.drop(1).forEach { stageId ->
-                            val x = stageStartById[stageId] ?: return@forEach
-                            drawLine(
-                                color = colors.outline.copy(alpha = 0.55f),
-                                start = Offset(x, 0f),
-                                end = Offset(x, size.height),
-                                strokeWidth = 1.dp.toPx()
-                            )
-                        }
-
                         if (dragStart != null && dragCurrent != null) {
                             val start = dragStart!!
                             val end = dragCurrent!!
@@ -473,7 +455,11 @@ fun FlowGraphView(
 
                     nodeLayouts.forEach { node ->
                         val selectedNode = selection is GraphSelection.JobSelection && selection.jobId == node.job.id
-                        val nodeColor = if (selectedNode) colors.primaryContainer else colors.surface
+                        val nodeColor = if (selectedNode) {
+                            colors.primaryContainer
+                        } else {
+                            colors.secondaryContainer
+                        }
                         val nodeBorder = if (selectedNode) colors.primary else colors.outline.copy(alpha = 0.5f)
                         Card(
                             modifier = Modifier

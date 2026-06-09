@@ -2,6 +2,7 @@ package com.kay.cyberterrarium.jobmanagement.components
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -20,7 +21,8 @@ fun SelectDropdownField(
     value: String,
     options: List<String>,
     onSelect: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    optionLabel: (String) -> String = { it }
 ) {
     var expanded by remember(options, value) { mutableStateOf(false) }
     ExposedDropdownMenuBox(
@@ -29,14 +31,17 @@ fun SelectDropdownField(
         modifier = modifier
     ) {
         OutlinedTextField(
-            value = value,
+            value = optionLabel(value),
             onValueChange = {},
             readOnly = true,
             singleLine = true,
             label = { Text(label) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
-                .menuAnchor()
+                .menuAnchor(
+                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                    enabled = true
+                )
                 .fillMaxWidth()
         )
         ExposedDropdownMenu(
@@ -45,7 +50,7 @@ fun SelectDropdownField(
         ) {
             options.forEach { option ->
                 androidx.compose.material3.DropdownMenuItem(
-                    text = { Text(option) },
+                    text = { Text(optionLabel(option)) },
                     onClick = {
                         onSelect(option)
                         expanded = false
