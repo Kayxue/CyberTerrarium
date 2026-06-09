@@ -47,8 +47,11 @@ compose.desktop {
             packageName = "com.kay.cyberterrarium"
             packageVersion = "1.0.0"
 
-            buildTypes.release.proguard{
+            modules("java.sql", "java.naming", "java.management", "java.instrument", "java.security.jgss")
+
+            buildTypes.release.proguard {
                 version.set("7.9.1")
+                configurationFiles.from(project.file("proguard-rules.pro"))
             }
         }
     }
