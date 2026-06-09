@@ -22,7 +22,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.kay.cyberterrarium.jobmanagement.JobManagement
+import page.JobManagement
 import com.kay.cyberterrarium.theme.AppTheme
 import page.Home
 import page.Processes

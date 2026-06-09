@@ -1,4 +1,4 @@
-package com.kay.cyberterrarium.jobmanagement.components
+package jobmanagement
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas

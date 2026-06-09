@@ -1,4 +1,4 @@
-package com.kay.cyberterrarium.jobmanagement.components
+package jobmanagement
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

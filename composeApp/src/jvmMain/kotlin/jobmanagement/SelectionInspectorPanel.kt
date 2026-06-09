@@ -1,6 +1,10 @@
-package com.kay.cyberterrarium.jobmanagement.components
+package jobmanagement
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -50,26 +54,32 @@ fun SelectionInspectorPanel(
                 }
             }
 
-            if (selectedJob != null) {
-                JobInspector(
-                    selectedJob = selectedJob,
-                    flowJobs = flowJobs,
-                    flowStages = flowStages,
-                    onSave = onSaveJob,
-                    onEditScript = onEditJobScript,
-                    onDelete = onDeleteJob
-                )
-            } else if (selectedStage != null) {
-                StageInspector(
-                    selectedStage = selectedStage,
-                    onSave = onSaveStage,
-                    onDelete = onDeleteStage
-                )
-            } else if (selectedDependency != null) {
-                DependencyInspector(
-                    selectedDependency = selectedDependency,
-                    onDelete = onDeleteDependency
-                )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                if (selectedJob != null) {
+                    JobInspector(
+                        selectedJob = selectedJob,
+                        flowJobs = flowJobs,
+                        flowStages = flowStages,
+                        onSave = onSaveJob,
+                        onEditScript = onEditJobScript,
+                        onDelete = onDeleteJob
+                    )
+                } else if (selectedStage != null) {
+                    StageInspector(
+                        selectedStage = selectedStage,
+                        onSave = onSaveStage,
+                        onDelete = onDeleteStage
+                    )
+                } else if (selectedDependency != null) {
+                    DependencyInspector(
+                        selectedDependency = selectedDependency,
+                        onDelete = onDeleteDependency
+                    )
+                }
             }
         }
     }
@@ -98,66 +108,98 @@ private fun JobInspector(
         ordersInStage.toList().sorted()
     }
 
-    Text("Job", style = MaterialTheme.typography.titleSmall)
-    Text("ID: ${selectedJob.id}")
-    OutlinedTextField(
-        value = title,
-        onValueChange = { title = it },
-        label = { Text("Title") },
-        modifier = Modifier.fillMaxWidth()
-    )
-    OutlinedTextField(
-        value = description,
-        onValueChange = { description = it },
-        label = { Text("Description") },
-        modifier = Modifier.fillMaxWidth()
-    )
-    SelectDropdownField(
-        label = "Stage",
-        value = flowStages.firstOrNull { it.id == stageId }?.let { "${it.displayName} (${it.id})" } ?: stageId,
-        options = flowStages.map { "${it.displayName} (${it.id})" },
-        onSelect = { selectedText ->
-            val selected = flowStages.firstOrNull { "${it.displayName} (${it.id})" == selectedText }
-            if (selected != null) {
-                stageId = selected.id
-            }
-        },
-        modifier = Modifier.fillMaxWidth()
-    )
-    SelectDropdownField(
-        label = "Order",
-        value = orderValue.toString(),
-        options = orderOptions.map { it.toString() },
-        onSelect = { selected ->
-            orderValue = selected.toIntOrNull() ?: orderValue
-        },
-        modifier = Modifier.fillMaxWidth()
-    )
-    Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text("Enabled: ")
-        Switch(checked = enabled, onCheckedChange = { enabled = it })
-    }
-    AppButton(
-        onClick = { onEditScript(selectedJob.id) },
-        modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-    ) { Text("Edit Script") }
-    Row(horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("Job", style = MaterialTheme.typography.titleSmall)
+        Text("ID: ${selectedJob.id}")
+
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 12.dp)
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                SelectDropdownField(
+                    label = "Stage",
+                    value = flowStages.firstOrNull { it.id == stageId }
+                        ?.let { "${it.displayName} (${it.id})" }
+                        ?: stageId,
+                    options = flowStages.map { "${it.displayName} (${it.id})" },
+                    onSelect = { selectedText ->
+                        val selected = flowStages.firstOrNull {
+                            "${it.displayName} (${it.id})" == selectedText
+                        }
+                        if (selected != null) {
+                            stageId = selected.id
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                SelectDropdownField(
+                    label = "Order",
+                    value = orderValue.toString(),
+                    options = orderOptions.map { it.toString() },
+                    onSelect = { selected ->
+                        orderValue = selected.toIntOrNull() ?: orderValue
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Enabled")
+                    Switch(checked = enabled, onCheckedChange = { enabled = it })
+                }
+            }
+
+            VerticalScrollbar(
+                adapter = rememberScrollbarAdapter(scrollState),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+            )
+        }
+
         AppButton(
-            onClick = { onSave(selectedJob.id, title, description, stageId, orderValue, enabled) },
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-        ) { Text("Save") }
-        Spacer(modifier = Modifier.width(8.dp))
-        AppButton(
-            onClick = { onDelete(selectedJob.id) },
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-        ) { Text("Delete") }
+            onClick = { onEditScript(selectedJob.id) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+        ) { Text("Edit Script") }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            AppButton(
+                onClick = { onSave(selectedJob.id, title, description, stageId, orderValue, enabled) },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+            ) { Text("Save") }
+            AppButton(
+                onClick = { onDelete(selectedJob.id) },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            ) { Text("Delete") }
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-package com.kay.cyberterrarium.jobmanagement.components
+package jobmanagement
 
 sealed interface GraphSelection {
     data class StageSelection(val stageId: String) : GraphSelection
