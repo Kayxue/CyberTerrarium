@@ -5,6 +5,7 @@ import job.model.Job;
 import job.model.result.FlowRun;
 import job.model.result.FlowRunJob;
 import job.model.result.JobStatus;
+import job.repository.IJobConfigRepository;
 import terrarium.model.TerrariumCreatureKind;
 import terrarium.model.TerrariumCreatureSignal;
 import terrarium.model.TerrariumCreatureStatus;
@@ -24,9 +25,18 @@ public final class JobTerrariumAdapter implements TerrariumResourceAdapter {
     public static final String SOURCE_ID = "jobs";
 
     private final IJobController controller;
+    private final IJobConfigRepository jobConfigRepository;
 
     public JobTerrariumAdapter(IJobController controller) {
+        this(controller, null);
+    }
+
+    public JobTerrariumAdapter(
+        IJobController controller,
+        IJobConfigRepository jobConfigRepository
+    ) {
         this.controller = controller;
+        this.jobConfigRepository = jobConfigRepository;
     }
 
     @Override
@@ -78,6 +88,8 @@ public final class JobTerrariumAdapter implements TerrariumResourceAdapter {
         int risk = riskFor(enabled, latestStatus);
         TerrariumCreatureStatus status = statusFor(enabled, latestStatus);
         TerrariumMotionStyle motionStyle = motionFor(enabled, latestStatus);
+        int priority = priorityFor(job);
+        int importance = TerrariumMath.clampInt(50 + priority * 5, 0, 100);
         double sizeWeight = latest == null
             ? 1.0d
             : TerrariumMath.clampDouble(0.8d + Math.log1p(Math.max(0L, latest.getDurationMs())) / 12.0d, 0.7d, 1.6d);
@@ -93,8 +105,17 @@ public final class JobTerrariumAdapter implements TerrariumResourceAdapter {
             activity,
             risk,
             status,
-            TerrariumVisualHint.stable(jobId, sizeWeight, motionStyle)
+            TerrariumVisualHint.stable(jobId, sizeWeight, motionStyle, importance)
         );
+    }
+
+    private int priorityFor(Job job) {
+        if (jobConfigRepository != null && job.getId() != null) {
+            return jobConfigRepository.findOneById(job.getId())
+                .map(config -> config.getPriority())
+                .orElse(0);
+        }
+        return job.getConfig() == null ? 0 : job.getConfig().getPriority();
     }
 
     private static Map<String, FlowRunJob> latestRunJobByJobId(List<FlowRunJob> runJobs) {

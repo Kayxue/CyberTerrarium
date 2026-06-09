@@ -1,9 +1,9 @@
 # Terrarium MVC Integration
 
 This package contains the Model and Controller side of the terrarium feature.
-It does not render UI yet. The future View layer should only consume
-`TerrariumSnapshot` and should not know whether data came from jobs, system
-usage, processes, or another source.
+The Compose View lives in `src/jvmMain/kotlin/terrarium`; its top-level
+`Terrarium` component is embedded by `page/Home.kt`. The View only consumes
+`TerrariumSnapshot`.
 
 ## Package Layout
 
@@ -22,7 +22,7 @@ usage, processes, or another source.
     - `TerrariumResourceAdapter`: read-only contract for external resources.
     - `JobTerrariumAdapter`: converts existing jobs into fish signals.
     - `SystemUsageTerrariumAdapter`: converts system metrics into environment signals.
-    - `UnavailableProcessTerrariumAdapter`: explicit placeholder until process reading exists.
+    - `ProcessTerrariumAdapter`: converts the complete process tree into fish signals.
     - `TerrariumSnapshotComposer`: combines source snapshots into one terrarium snapshot.
 - `terrarium.controller`
   - MVC Controller layer.
@@ -30,9 +30,8 @@ usage, processes, or another source.
     - `ITerrariumController`
     - `TerrariumController`
 
-There is no `repository` layer for terrarium right now because terrarium does
-not own persistence and does not read/write DB directly. It consumes external
-read-only data through adapters.
+There is no terrarium-owned repository layer. The job adapter may receive the
+existing `IJobConfigRepository` to read priority, but never calls write methods.
 
 ## Main Contract
 
@@ -65,10 +64,10 @@ External source
   -> TerrariumController.getSnapshot(...)
   -> TerrariumSnapshotComposer
   -> TerrariumSnapshot
-  -> future View layer
+  -> Compose View layer
 ```
 
-The future View should render only:
+The View renders only:
 
 - `snapshot.getEnvironment()`
 - `snapshot.getFish()`
@@ -95,6 +94,7 @@ TerrariumSnapshot snapshot = terrariumController.getSnapshot(List.of(
 - `IJobController.listJobs()`
 - `IJobController.listFlowRuns()`
 - `IJobController.listFlowRunJobs(...)`
+- optionally `IJobConfigRepository.findOneById(...)` for display priority
 
 It does not call mutating job APIs.
 
@@ -105,6 +105,7 @@ Mapping behavior:
 - Failed/cancelled/timeout latest result -> sick fish with high risk/stress.
 - Disabled job -> inactive fish.
 - No result yet -> unknown but moderately healthy fish.
+- Job priority -> `visualHint.importance`, used by the 100-fish View limit.
 
 The adapter then lets `TerrariumSnapshotComposer` apply environmental pressure
 to the final `TerrariumFishState`.
@@ -161,95 +162,38 @@ Mapping behavior:
 
 ## Connecting Processes
 
-Process reading is not implemented yet. Use the explicit placeholder for now:
+Processes are supported through `ProcessTerrariumAdapter`. It only calls the
+read-only `ProcessManager.getProcessTrees()` method.
 
 ```java
+ProcessManager processManager = new ProcessManager();
+
 TerrariumSnapshot snapshot = new TerrariumController().getSnapshot(List.of(
-    new UnavailableProcessTerrariumAdapter()
+    new ProcessTerrariumAdapter(processManager)
 ));
 ```
 
-This source returns:
+Reuse the same adapter or injected `ProcessManager` across snapshots because it
+stores previous OSHI process ticks for later CPU usage calculations.
 
-- `sourceStatus = UNAVAILABLE`
-- no environment signals
-- no fish
-- a message explaining that process reading is not implemented
-
-When process reading exists, replace `UnavailableProcessTerrariumAdapter` with a
-real process adapter:
-
-```java
-public final class ProcessTerrariumAdapter implements TerrariumResourceAdapter {
-    private final ProcessReader reader;
-
-    public ProcessTerrariumAdapter(ProcessReader reader) {
-        this.reader = reader;
-    }
-
-    @Override
-    public String getSourceId() {
-        return "processes";
-    }
-
-    @Override
-    public String getDisplayName() {
-        return "Processes";
-    }
-
-    @Override
-    public TerrariumSourceSnapshot readSnapshot() {
-        List<TerrariumCreatureSignal> fish = new ArrayList<>();
-
-        for (ProcessInfo process : reader.listProcesses()) {
-            fish.add(new TerrariumCreatureSignal(
-                "process:" + process.getPid(),
-                process.getName(),
-                TerrariumCreatureKind.PROCESS,
-                getSourceId(),
-                String.valueOf(process.getPid()),
-                processHealth(process),
-                processStress(process),
-                processActivity(process),
-                processRisk(process),
-                processStatus(process),
-                TerrariumVisualHint.stable(
-                    String.valueOf(process.getPid()),
-                    processSize(process),
-                    processMotion(process)
-                )
-            ));
-        }
-
-        return new TerrariumSourceSnapshot(
-            getSourceId(),
-            getDisplayName(),
-            TerrariumSourceStatus.AVAILABLE,
-            List.of(),
-            fish,
-            Instant.now(),
-            ""
-        );
-    }
-}
-```
-
-The process reader itself should live outside terrarium if it belongs to another
-module. The terrarium adapter should only translate read-only process data into
-terrarium semantic values.
+Every root and descendant process becomes a fish. PID controls identity and
+position, process name/user controls color, resident memory controls size, and
+CPU/state control activity, stress, risk, health, and motion. The adapter emits
+no environment signals, avoiding duplicate system pressure calculations.
 
 ## Combining Sources
 
-The normal future usage should combine all available sources:
+Normal usage combines all available sources:
 
 ```java
 IJobController jobController = JobController.createDefault();
+ProcessManager processManager = new ProcessManager();
 TerrariumSystemMetrics metrics = SampledFromCurrentSystemUsage;
 
 TerrariumSnapshot snapshot = new TerrariumController().getSnapshot(List.of(
     new SystemUsageTerrariumAdapter(metrics),
     new JobTerrariumAdapter(jobController),
-    new UnavailableProcessTerrariumAdapter()
+    new ProcessTerrariumAdapter(processManager)
 ));
 ```
 
@@ -257,9 +201,9 @@ TerrariumSnapshot snapshot = new TerrariumController().getSnapshot(List.of(
 controller creates an unavailable source snapshot for that adapter and still
 returns a renderable `TerrariumSnapshot`.
 
-## What The View Should Do Later
+## View Integration
 
-The View layer should not duplicate mapping rules. It should render the model:
+The View layer does not duplicate mapping rules. It renders the model:
 
 - Use `TerrariumEnvironmentState.health`, `clarity`, `stress`,
   `temperatureStress`, `waveIntensity`, `bubbleIntensity`, and `tint` to style
@@ -268,6 +212,20 @@ The View layer should not duplicate mapping rules. It should render the model:
   and `visualHint` to style fish.
 - Use `TerrariumSourceSnapshot.sourceStatus` and `message` to show source
   availability if needed.
+- `state.rememberTerrariumSnapshot(...)` polls every two seconds by default and
+  reuses the same `ProcessManager`.
+- At most 100 fish are drawn, ordered by `visualHint.importance`, job kind,
+  risk, and activity.
+- Environment metrics, water tint, habitat colors, plants, and coral transition
+  toward each new snapshot over two seconds instead of changing immediately.
+- Fish keep their original trajectory and facing direction when snapshots
+  update. New fish fade in; removed or replaced fish fade out over two seconds.
+- Fish follow deterministic wide-area paths that span most of the tank. Each
+  fish owns an independent horizontal position animation rather than deriving
+  X from a repeating global phase. Fish travel to a boundary, remain there for
+  700 ms, flip horizontally over 600 ms, then animate from that exact position
+  toward the opposite boundary without wrapping.
+- Hover shows compact information; clicking opens the fish details dialog.
 
 If the View needs a new visual cue, prefer adding a semantic field to model/core
 only when the existing values are not enough. Avoid making the View inspect
@@ -278,6 +236,5 @@ external job/process/system classes directly.
 - Terrarium has no DB repository because it does not persist data.
 - Jobs are read through existing job controller APIs only.
 - System usage must be bridged through `TerrariumSystemMetrics`.
-- Process support is intentionally unavailable until a real process reader
-  exists.
-- No View is implemented in this package yet.
+- Processes are flattened; parent/child relationships are not visualized.
+- Lower-ranked fish remain in the snapshot when the View draws its top 100.

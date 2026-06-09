@@ -2,6 +2,7 @@ package terrarium
 
 import job.controller.IJobController
 import job.model.Job
+import job.model.JobConfig
 import job.model.JobDependency
 import job.model.flow.FlowJobLink
 import job.model.result.FlowRun
@@ -12,13 +13,18 @@ import job.model.script.ScriptLanguage
 import job.model.stage.BarrierMode
 import job.model.stage.FlowStage
 import job.model.stage.StageFailMode
+import job.repository.IJobConfigRepository
+import process.ProcessManager
+import process.ProcessTreeNode
 import terrarium.controller.TerrariumController
 import terrarium.core.JobTerrariumAdapter
+import terrarium.core.ProcessTerrariumAdapter
 import terrarium.core.SystemUsageTerrariumAdapter
-import terrarium.core.UnavailableProcessTerrariumAdapter
+import terrarium.model.TerrariumCreatureKind
 import terrarium.model.TerrariumCreatureStatus
 import terrarium.model.TerrariumSourceStatus
 import terrarium.model.TerrariumSystemMetrics
+import java.util.Optional
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -48,13 +54,28 @@ class TerrariumContractTest {
     }
 
     @Test
-    fun unavailableProcessAdapterDoesNotEmitProcessFish() {
-        val source = UnavailableProcessTerrariumAdapter().readSnapshot()
-        val snapshot = TerrariumController().composeSnapshots(listOf(source))
+    fun processAdapterEmitsEveryProcessAsUniqueFish() {
+        val manager = RecordingProcessManager()
+        val adapter = ProcessTerrariumAdapter(manager)
 
-        assertEquals(TerrariumSourceStatus.UNAVAILABLE, source.sourceStatus)
-        assertEquals(0, snapshot.fish.size)
-        assertTrue(source.message.contains("not implemented"))
+        val firstSource = adapter.readSnapshot()
+        val firstSnapshot = TerrariumController().composeSnapshots(listOf(firstSource))
+
+        assertEquals(TerrariumSourceStatus.AVAILABLE, firstSource.sourceStatus)
+        assertEquals(0, firstSource.environmentSignals.size)
+        assertEquals(manager.lastProcessCount, firstSnapshot.fish.size)
+        assertTrue(firstSnapshot.fish.isNotEmpty())
+        assertTrue(firstSnapshot.fish.all { it.kind == TerrariumCreatureKind.PROCESS })
+        assertTrue(firstSnapshot.fish.all { it.id == "process:${it.sourceRef}" })
+        assertEquals(
+            firstSnapshot.fish.size,
+            firstSnapshot.fish.map { it.sourceRef }.toSet().size
+        )
+
+        val secondSource = adapter.readSnapshot()
+
+        assertEquals(TerrariumSourceStatus.AVAILABLE, secondSource.sourceStatus)
+        assertEquals(2, manager.readCount)
     }
 
     @Test
@@ -82,6 +103,33 @@ class TerrariumContractTest {
         assertTrue(fishByRef.getValue("success-job").health > fishByRef.getValue("failed-job").health)
     }
 
+    @Test
+    fun jobPriorityControlsFishDisplayImportance() {
+        val lowPriorityJob = job("low-priority", "Low priority", enabled = true)
+        val highPriorityJob = job("high-priority", "High priority", enabled = true)
+        val controller = FakeJobController(
+            jobs = listOf(lowPriorityJob, highPriorityJob),
+            runs = emptyList(),
+            runJobs = emptyList()
+        )
+        val repository = FakeJobConfigRepository(
+            mapOf(
+                "low-priority" to JobConfig().apply { priority = -5 },
+                "high-priority" to JobConfig().apply { priority = 8 }
+            )
+        )
+
+        val snapshot = TerrariumController().getSnapshot(
+            listOf(JobTerrariumAdapter(controller, repository))
+        )
+        val fishByRef = snapshot.fish.associateBy { it.sourceRef }
+
+        assertTrue(
+            fishByRef.getValue("high-priority").visualHint.importance >
+                fishByRef.getValue("low-priority").visualHint.importance
+        )
+    }
+
     private fun job(id: String, title: String, enabled: Boolean): Job {
         return Job().apply {
             this.id = id
@@ -106,6 +154,40 @@ class TerrariumContractTest {
             this.status = status
             this.durationMs = 1000L
         }
+    }
+}
+
+private class FakeJobConfigRepository(
+    private val configs: Map<String, JobConfig>
+) : IJobConfigRepository {
+    override fun findOneById(jobId: String): Optional<JobConfig> =
+        Optional.ofNullable(configs[jobId])
+
+    override fun findAll(): List<JobConfig> = configs.values.toList()
+    override fun save(jobId: String, config: JobConfig): Unit = unsupported()
+    override fun updateOneById(jobId: String, config: JobConfig): Unit = unsupported()
+    override fun deleteOneById(jobId: String): Unit = unsupported()
+
+    private fun unsupported(): Nothing {
+        throw UnsupportedOperationException("Fake repository only supports read methods.")
+    }
+}
+
+private class RecordingProcessManager : ProcessManager() {
+    var readCount: Int = 0
+        private set
+    var lastProcessCount: Int = 0
+        private set
+
+    override fun getProcessTrees(): List<ProcessTreeNode> {
+        readCount += 1
+        return super.getProcessTrees().also { trees ->
+            lastProcessCount = trees.sumOf(::countProcessTree)
+        }
+    }
+
+    private fun countProcessTree(process: ProcessTreeNode): Int {
+        return 1 + process.children.sumOf(::countProcessTree)
     }
 }
 

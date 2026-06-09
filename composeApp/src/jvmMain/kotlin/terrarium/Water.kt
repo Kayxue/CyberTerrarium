@@ -8,101 +8,85 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import terrarium.model.TerrariumEnvironmentState
+import kotlin.math.PI
+import kotlin.math.sin
 
 @Composable
-fun WaterCanvas() {
-    Canvas(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        val width = size.width
-        val height = size.height
+fun WaterCanvas(
+    environment: TerrariumEnvironmentState = TerrariumEnvironmentState.healthy(),
+    modifier: Modifier = Modifier.fillMaxSize()
+) {
+    Canvas(modifier = modifier) {
+        drawTerrariumWater(environment, phase = 0f)
+    }
+}
 
-        // Water background
+internal fun DrawScope.drawTerrariumWater(
+    environment: TerrariumEnvironmentState,
+    phase: Float,
+    style: EnvironmentStyle = environmentStyle(environment)
+) {
+    drawRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(style.waterTop, style.waterBottom)
+        ),
+        size = size
+    )
+
+    val clarityLoss = 1f - environment.clarity / 100f
+    val hazeAlpha = when (style.band) {
+        EnvironmentBand.THRIVING -> 0.02f
+        EnvironmentBand.STABLE -> 0.07f
+        EnvironmentBand.STRESSED -> 0.16f
+        EnvironmentBand.CRITICAL -> 0.28f
+    } + clarityLoss * 0.22f
+    drawRect(style.haze.copy(alpha = hazeAlpha.coerceIn(0f, 0.5f)), size = size)
+
+    if (environment.temperatureStress > 35) {
         drawRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    Color(0xFF81D4FA),
-                    Color(0xFF0288D1)
-                )
-            ),
+            Color(0xFFFF8A65).copy(alpha = environment.temperatureStress / 700f),
             size = size
         )
+    }
 
-        // First wave
-        val wave1 = Path().apply {
-            moveTo(0f, height * 0.35f)
-
-            cubicTo(
-                width * 0.25f, height * 0.25f,
-                width * 0.25f, height * 0.45f,
-                width * 0.5f, height * 0.35f
-            )
-
-            cubicTo(
-                width * 0.75f, height * 0.25f,
-                width * 0.75f, height * 0.45f,
-                width, height * 0.35f
-            )
-
-            lineTo(width, height)
-            lineTo(0f, height)
-            close()
+    val lineCount = (2 + environment.motion / 18).coerceIn(2, 7)
+    val movement = phase * size.width * 0.18f
+    repeat(lineCount) { index ->
+        val baseY = size.height * (0.18f + index * 0.09f)
+        val path = Path()
+        val startX = -size.width * 0.12f + movement % (size.width * 0.3f)
+        path.moveTo(startX, baseY)
+        val amplitude = size.height * (0.008f + environment.waveIntensity.toFloat() * 0.012f)
+        val segments = 6
+        repeat(segments) { segment ->
+            val x = startX + size.width * (segment + 1) / segments
+            val y = baseY + sin((segment + phase * 2f) * PI).toFloat() * amplitude
+            path.lineTo(x, y)
         }
-
         drawPath(
-            path = wave1,
-            color = Color(0x6633B5E5)
+            path,
+            style.current.copy(alpha = 0.08f + environment.motion / 550f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f)
         )
+    }
 
-        // Second wave
-        val wave2 = Path().apply {
-            moveTo(0f, height * 0.5f)
-
-            cubicTo(
-                width * 0.2f, height * 0.4f,
-                width * 0.3f, height * 0.6f,
-                width * 0.5f, height * 0.5f
-            )
-
-            cubicTo(
-                width * 0.7f, height * 0.4f,
-                width * 0.8f, height * 0.6f,
-                width, height * 0.5f
-            )
-
-            lineTo(width, height)
-            lineTo(0f, height)
-            close()
+    val count = (5 + environment.bubbleIntensity * 13).toInt().coerceIn(5, 18)
+    repeat(count) { index ->
+        val seed = index * 73 + 19
+        val x = size.width * (0.08f + ((seed % 83) / 100f))
+        val baseY = size.height * (0.25f + ((seed * 7 % 65) / 100f))
+        val travel = (phase + (seed % 10) / 10f) % 1f
+        val y = (baseY - travel * size.height * 0.32f).let {
+            if (it < size.height * 0.08f) it + size.height * 0.68f else it
         }
-
-        drawPath(
-            path = wave2,
-            color = Color(0x5529B6F6)
-        )
-
-        // Bubbles
+        val radius = 2.2f + (seed % 5)
         drawCircle(
-            color = Color.White.copy(alpha = 0.45f),
-            radius = 8f,
-            center = Offset(width * 0.2f, height * 0.75f)
-        )
-
-        drawCircle(
-            color = Color.White.copy(alpha = 0.35f),
-            radius = 5f,
-            center = Offset(width * 0.3f, height * 0.55f)
-        )
-
-        drawCircle(
-            color = Color.White.copy(alpha = 0.4f),
-            radius = 10f,
-            center = Offset(width * 0.75f, height * 0.65f)
-        )
-
-        drawCircle(
-            color = Color.White.copy(alpha = 0.3f),
-            radius = 6f,
-            center = Offset(width * 0.85f, height * 0.35f)
+            Color.White.copy(alpha = 0.18f + environment.clarity / 500f),
+            radius = radius,
+            center = Offset(x, y),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.1f)
         )
     }
 }

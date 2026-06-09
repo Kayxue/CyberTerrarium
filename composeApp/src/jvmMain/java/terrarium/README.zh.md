@@ -1,8 +1,8 @@
 # Terrarium MVC 整合說明
 
-這個 package 目前只負責 terrarium 功能的 Model 與 Controller，不包含 View。
-之後 View 層應該只消費 `TerrariumSnapshot`，不應該知道資料到底來自 jobs、
-system usage、processes，或其他外部來源。
+這個 package 負責 terrarium 功能的 Model 與 Controller。Compose View 位於
+`src/jvmMain/kotlin/terrarium`，頂層 `Terrarium` component 由 `page/Home.kt`
+嵌入。View 只消費 `TerrariumSnapshot`。
 
 ## Package 分層
 
@@ -21,7 +21,7 @@ system usage、processes，或其他外部來源。
     - `TerrariumResourceAdapter`：外部資源接入 terrarium 的 read-only contract。
     - `JobTerrariumAdapter`：把現有 jobs 轉成魚訊號。
     - `SystemUsageTerrariumAdapter`：把 system metrics 轉成環境訊號。
-    - `UnavailableProcessTerrariumAdapter`：process 讀取尚未完成前的明確 placeholder。
+    - `ProcessTerrariumAdapter`：把完整 process tree 轉成魚訊號。
     - `TerrariumSnapshotComposer`：把多個 source snapshot 合成一個 terrarium snapshot。
 - `terrarium.controller`
   - MVC 的 Controller 層。
@@ -29,8 +29,8 @@ system usage、processes，或其他外部來源。
     - `ITerrariumController`
     - `TerrariumController`
 
-目前沒有 `repository` layer，因為 terrarium 自己不擁有 persistence，也不直接讀寫 DB。
-它只透過 adapters 消費外部 read-only 資料。
+Terrarium 沒有自己的 repository layer。Job adapter 可注入既有
+`IJobConfigRepository` 讀取 priority，但絕不呼叫寫入方法。
 
 ## 主要 Contract
 
@@ -63,10 +63,10 @@ public interface TerrariumResourceAdapter {
   -> TerrariumController.getSnapshot(...)
   -> TerrariumSnapshotComposer
   -> TerrariumSnapshot
-  -> 未來的 View layer
+  -> Compose View layer
 ```
 
-未來 View 只應該 render：
+View 只會 render：
 
 - `snapshot.getEnvironment()`
 - `snapshot.getFish()`
@@ -92,6 +92,7 @@ TerrariumSnapshot snapshot = terrariumController.getSnapshot(List.of(
 - `IJobController.listJobs()`
 - `IJobController.listFlowRuns()`
 - `IJobController.listFlowRunJobs(...)`
+- 可選擇使用 `IJobConfigRepository.findOneById(...)` 取得顯示 priority
 
 它不會呼叫會修改 jobs 的 API。
 
@@ -102,6 +103,7 @@ TerrariumSnapshot snapshot = terrariumController.getSnapshot(List.of(
 - 最新結果 failed / cancelled / timeout：魚會偏生病，risk/stress 較高。
 - disabled job：魚會是 inactive。
 - 還沒有 result：魚狀態 unknown，但健康值中等。
+- Job priority：轉成 `visualHint.importance`，供 100 隻上限排序。
 
 之後 `TerrariumSnapshotComposer` 會再把環境壓力套用到最終的 `TerrariumFishState`。
 
@@ -155,104 +157,59 @@ val metrics = TerrariumSystemMetrics(
 
 ## 接入 Processes
 
-Process 讀取目前尚未實作。現在先使用明確的 placeholder：
+Processes 已透過 `ProcessTerrariumAdapter` 接入。它只呼叫 read-only 的
+`ProcessManager.getProcessTrees()`。
 
 ```java
+ProcessManager processManager = new ProcessManager();
+
 TerrariumSnapshot snapshot = new TerrariumController().getSnapshot(List.of(
-    new UnavailableProcessTerrariumAdapter()
+    new ProcessTerrariumAdapter(processManager)
 ));
 ```
 
-這個 source 會回傳：
+請跨 snapshots 重用同一個 adapter 或 `ProcessManager`，因為它保存前一次
+OSHI process ticks，後續 CPU usage 才會較準確。
 
-- `sourceStatus = UNAVAILABLE`
-- 不產生 environment signals
-- 不產生 fish
-- message 會說明 process reading 尚未實作
-
-等 process reader 完成後，用真正的 process adapter 取代 `UnavailableProcessTerrariumAdapter`：
-
-```java
-public final class ProcessTerrariumAdapter implements TerrariumResourceAdapter {
-    private final ProcessReader reader;
-
-    public ProcessTerrariumAdapter(ProcessReader reader) {
-        this.reader = reader;
-    }
-
-    @Override
-    public String getSourceId() {
-        return "processes";
-    }
-
-    @Override
-    public String getDisplayName() {
-        return "Processes";
-    }
-
-    @Override
-    public TerrariumSourceSnapshot readSnapshot() {
-        List<TerrariumCreatureSignal> fish = new ArrayList<>();
-
-        for (ProcessInfo process : reader.listProcesses()) {
-            fish.add(new TerrariumCreatureSignal(
-                "process:" + process.getPid(),
-                process.getName(),
-                TerrariumCreatureKind.PROCESS,
-                getSourceId(),
-                String.valueOf(process.getPid()),
-                processHealth(process),
-                processStress(process),
-                processActivity(process),
-                processRisk(process),
-                processStatus(process),
-                TerrariumVisualHint.stable(
-                    String.valueOf(process.getPid()),
-                    processSize(process),
-                    processMotion(process)
-                )
-            ));
-        }
-
-        return new TerrariumSourceSnapshot(
-            getSourceId(),
-            getDisplayName(),
-            TerrariumSourceStatus.AVAILABLE,
-            List.of(),
-            fish,
-            Instant.now(),
-            ""
-        );
-    }
-}
-```
-
-如果 process reader 屬於另一個 module，它應該留在 terrarium 外面。terrarium adapter 只負責把 read-only process data 轉成 terrarium 的語意值。
+所有 root 與 descendant process 都會成為魚。PID 控制 identity/位置，
+name/user 控制顏色，resident memory 控制大小，CPU/state 控制活動、壓力、
+風險、健康與移動。Process adapter 不產生 environment signals。
 
 ## 合併多個來源
 
-未來正常使用時，應該把所有可用來源一起交給 controller：
+正常使用時，會把所有可用來源一起交給 controller：
 
 ```java
 IJobController jobController = JobController.createDefault();
+ProcessManager processManager = new ProcessManager();
 TerrariumSystemMetrics metrics = SampledFromCurrentSystemUsage;
 
 TerrariumSnapshot snapshot = new TerrariumController().getSnapshot(List.of(
     new SystemUsageTerrariumAdapter(metrics),
     new JobTerrariumAdapter(jobController),
-    new UnavailableProcessTerrariumAdapter()
+    new ProcessTerrariumAdapter(processManager)
 ));
 ```
 
 `TerrariumController` 會隔離 adapter failure。若其中一個 adapter 失敗，controller 會為那個 adapter 建立 unavailable source snapshot，並且仍然回傳可 render 的 `TerrariumSnapshot`。
 
-## 未來 View 應該怎麼做
+## View 整合
 
-View layer 不應該重複 mapping 規則，只應該 render model：
+View layer 不重複 mapping 規則，只 render model：
 
 - 使用 `TerrariumEnvironmentState.health`、`clarity`、`stress`、`temperatureStress`、`waveIntensity`、`bubbleIntensity`、`tint` 來決定水的視覺。
 - 使用每個 `TerrariumFishState.health`、`stress`、`activity`、`risk`、`status`、`visualHint` 來決定魚的視覺。
 - 必要時使用 `TerrariumSourceSnapshot.sourceStatus` 與 `message` 顯示來源可用狀態。
+- `state.rememberTerrariumSnapshot(...)` 預設每兩秒更新並重用 `ProcessManager`。
+- 最多繪製 100 隻魚，依 `importance`、job 類型、risk、activity 排序。
+- 環境數值、水色、環境配色、水草與珊瑚會在 2 秒內漸變到新 snapshot，
+  不會瞬間跳換。
+- Snapshot 更新時，既有魚會維持原軌跡與方向，只更新狀態和 style。新增魚會
+  淡入，消失或被替換的魚會在 2 秒內淡出。
+- 每隻魚都有獨立的水平位置動畫，不再用循環 global phase 推導 X。抵達左右
+  邊界後會保持原位 700ms，再用 600ms 左右翻面；翻面完成後才從完全相同的
+  位置往反方向移動，不會 wrap 或瞬移。
+- Hover 顯示精簡資訊，點擊魚會開啟詳細 dialog。
 
 如果 View 需要新的視覺提示，優先檢查現有語意值是否足夠。只有當現有值不足以表達需求時，才在 model/core 增加新的語意欄位。
 避免讓 View 直接檢查 job/process/system 的外部類別。
@@ -262,5 +219,5 @@ View layer 不應該重複 mapping 規則，只應該 render model：
 - Terrarium 沒有 DB repository，因為目前不持久化資料。
 - Jobs 只透過現有 job controller 的 read/list API 讀取。
 - System usage 必須透過 `TerrariumSystemMetrics` 橋接。
-- Process support 在真正的 process reader 完成前會明確標示 unavailable。
-- 目前不實作 View 在此 package。
+- Processes 會攤平，暫不視覺化 parent/child 關係。
+- 超過 100 隻時，其餘魚仍保留在 snapshot。

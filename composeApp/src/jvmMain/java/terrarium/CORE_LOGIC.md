@@ -8,10 +8,12 @@ Terrarium 的核心流程可以簡化成：
   -> Controller 收集各來源結果
   -> Composer 合併與計算
   -> TerrariumSnapshot
-  -> 未來由 View 繪製水與魚
+  -> Compose View 繪製水、環境與魚
 ```
 
-目前這個 package 實作的是 MVC 架構中的 Model 與 Controller。View 尚未接入。
+Java `terrarium` package 實作 MVC 的 Model 與 Controller；Compose View 位於
+`src/jvmMain/kotlin/terrarium`，並由 `page/Home.kt` 嵌入頂層 `Terrarium`
+component。
 
 ## Snapshot 是什麼？
 
@@ -37,7 +39,7 @@ Instant sampledAt;                      // 快照產生時間
 - 有 5 隻健康的魚與 2 隻生病的魚。
 - System usage 成功取得。
 - Jobs 成功取得。
-- Processes 尚未支援。
+- Processes 成功取得。
 
 可以把 `TerrariumSnapshot` 理解成水族缸的一張照片。定期取得新的 snapshot，
 才會形成看起來持續更新的動態水族缸。
@@ -87,7 +89,7 @@ TerrariumSnapshotComposer
 List<TerrariumResourceAdapter> adapters = List.of(
     new SystemUsageTerrariumAdapter(metrics),
     new JobTerrariumAdapter(jobController),
-    new UnavailableProcessTerrariumAdapter()
+    new ProcessTerrariumAdapter(processManager)
 );
 ```
 
@@ -175,7 +177,9 @@ listFlowRuns();
 listFlowRunJobs(...);
 ```
 
-Terrarium 不直接操作 job DB，也不修改 job controller、repository 或 core。
+若注入既有 `IJobConfigRepository`，adapter 只呼叫 `findOneById(...)` 讀取
+priority。Terrarium 不呼叫 repository 的 save/update/delete，也不修改外部
+job package。
 
 每個 job 會產生一個 `TerrariumCreatureSignal`：
 
@@ -185,32 +189,33 @@ Terrarium 不直接操作 job DB，也不修改 job controller、repository 或 
 - `RUNNING`：活動度高，壓力偏高。
 - Disabled job：狀態為 `INACTIVE`。
 - 沒有執行結果：狀態為 `UNKNOWN`，健康值中等。
+- Job priority：轉成 `visualHint.importance`，供 View 選取最多 100 隻魚。
 
 目前 job 執行架構主要在 job 結束後保存結果，因此 terrarium 現階段主要呈現
 最近一次執行結果。即時 `RUNNING` 狀態必須等外部 job 模組提供可讀取的即時狀態
 後才能完整呈現。
 
-### 5. Process 暫時回傳 Unavailable
+### 5. Processes 轉成魚訊號
 
-目前專案還沒有 process reader，因此使用：
+`ProcessTerrariumAdapter` 只透過既有 `ProcessManager` 的 read-only API：
 
 ```java
-new UnavailableProcessTerrariumAdapter();
+processManager.getProcessTrees();
 ```
 
-它只會回傳：
+它不會呼叫 process termination API。Adapter 會遞迴走訪所有 root 與 children，
+並把每個 process 轉成 `TerrariumCreatureSignal(PROCESS)`：
 
-```text
-sourceStatus = UNAVAILABLE
-environmentSignals = []
-creatureSignals = []
-message = process reader 尚未實作
-```
+- PID 作為 `id`、`sourceRef` 與位置 seed。
+- Name/user 產生顏色 seed。
+- CPU usage 影響 activity、stress 與 importance。
+- Resident memory 只影響魚的大小。
+- `STOPPED` 成為 `INACTIVE`。
+- `ZOMBIE`、`INVALID` 成為 `SICK` 並提高 risk。
 
-它不會建立假的 process 魚。
-
-未來 process reader 完成後，只需要新增真正的 `ProcessTerrariumAdapter`，把每個
-process 轉成 `TerrariumCreatureSignal`，再替換掉 unavailable adapter。
+Process adapter 不產生 environment signals，避免與 system usage 重複計算。
+同一個 `ProcessManager` 必須跨 snapshots 重用，讓後續 CPU usage 可使用前一次
+OSHI ticks。Process hierarchy 目前會攤平成 fish list。
 
 ### 6. Composer 合併環境
 
@@ -286,7 +291,7 @@ new TerrariumSnapshot(
 );
 ```
 
-未來 View 只需要讀取：
+View 只需要讀取：
 
 ```java
 snapshot.getEnvironment();
@@ -301,6 +306,7 @@ View 不需要知道 CPU、`JobStatus`、OSHI 或 process reader 的具體類別
 
 ```java
 IJobController jobController = JobController.createDefault();
+ProcessManager processManager = new ProcessManager();
 
 TerrariumSystemMetrics metrics = new TerrariumSystemMetrics(
     cpuUsagePercent,
@@ -316,7 +322,7 @@ TerrariumSystemMetrics metrics = new TerrariumSystemMetrics(
 List<TerrariumResourceAdapter> adapters = List.of(
     new SystemUsageTerrariumAdapter(metrics),
     new JobTerrariumAdapter(jobController),
-    new UnavailableProcessTerrariumAdapter()
+    new ProcessTerrariumAdapter(processManager)
 );
 
 TerrariumController controller = new TerrariumController();
@@ -331,9 +337,9 @@ List<TerrariumFishState> fish = snapshot.getFish();
 List<TerrariumSourceSnapshot> sources = snapshot.getSources();
 ```
 
-## 目前不會自動更新
+## Snapshot 如何持續更新
 
-目前 Controller 的行為是：
+Controller 本身的行為是：
 
 ```text
 呼叫一次 getSnapshot()
@@ -343,17 +349,18 @@ List<TerrariumSourceSnapshot> sources = snapshot.getSources();
 
 `TerrariumSnapshot` 本身不會自動變化。
 
-未來 View 或 state layer 需要定時執行：
+目前 `state.rememberTerrariumSnapshot(...)` 預設每兩秒執行：
 
 ```text
 每隔一段時間取得 system usage
-  -> 建立最新 metrics/adapters
+  -> 建立最新 metrics
+  -> 重用既有 process adapter
   -> controller.getSnapshot(...)
   -> 更新 UI state
   -> View 重新繪製
 ```
 
-例如每秒產生一個新的 snapshot，就能讓水族缸持續反映最新系統狀態。
+State layer 會重用同一個 `ProcessManager`，讓 process CPU usage 保持連續。
 
 ## Layers in the package
 
@@ -387,9 +394,26 @@ List<TerrariumSourceSnapshot> sources = snapshot.getSources();
 
 ### View
 
-尚未實作。未來 View 應該：
+已實作於 Kotlin：
 
-- 只讀 `TerrariumSnapshot`。
-- 根據 `TerrariumEnvironmentState` 繪製水色、濁度、波浪與氣泡。
-- 根據 `TerrariumFishState` 繪製魚的健康、活動、壓力與風險。
-- 不直接存取 jobs、system usage 或 processes。
+- `terrarium/Terrarium.kt`：組合 snapshot、場景與魚資訊 dialog。
+- `terrarium/TerrariumScene.kt`：最多選取 100 隻魚、動畫、hover 與 click。
+- `terrarium/Water.kt`：水色、濁度、洋流與氣泡。
+- `terrarium/Environment.kt`：環境分段與 style contract。
+- `terrarium/Substrate.kt`、`Rocks.kt`、`Plants.kt`、`Coral.kt`：各自繪製環境元件。
+- `terrarium/Fish.kt`：依 kind、health、stress、status 與 visual hint 繪製魚。
+
+每次 snapshot 更新時，環境數值、水色、環境配色、水草與珊瑚會用 2 秒
+transition 漸變到新狀態。若 transition 尚未完成又收到新 snapshot，動畫會從
+目前畫面中的中間值繼續追向新 target。
+
+每隻魚第一次出現時會固定 position seed、軌跡與 facing direction。後續 snapshot
+只替換它的狀態與 style，不會重新計算軌跡。新增魚會淡入；process/job 消失或
+離開 top 100 時會先用 2 秒淡出，完成後才移除並讓下一隻魚補位。
+
+魚的 seed 會決定跨越大部分水族缸寬高的路徑。每隻魚持有自己的
+`horizontalProgress Animatable`，不使用循環 global phase 推導 X。抵達邊界後
+會保持目前 X 700ms，再用 600ms 水平 scale transition 翻面；翻面完成後才從
+同一個 X animate 到另一側，因此不會 wrap 或瞬移。
+
+View 只讀 `TerrariumSnapshot`，不直接存取 jobs、system usage 或 processes。

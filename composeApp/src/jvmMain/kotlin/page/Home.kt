@@ -34,8 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import state.rememberSystemUsage
-import terrarium.FishCanvas
-import terrarium.WaterCanvas
+import terrarium.Terrarium
 import kotlin.math.roundToInt
 
 @Composable
@@ -59,8 +58,10 @@ fun Home(){
                 .clip(RoundedCornerShape(16.dp))
                 .background(colors.surfaceVariant)
         ) {
-            WaterCanvas()
-            FishCanvas()
+            Terrarium(
+                systemUsage = usage,
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         Spacer(Modifier.height(8.dp))
