@@ -47,19 +47,16 @@ compose.desktop {
             packageName = "Cyber Terrarium"
             packageVersion = "1.0.5"
 
-            modules("java.sql", "java.naming", "java.management", "jdk.unsupported")
+            modules("java.sql", "java.naming", "java.management", "jdk.unsupported", "java.instrument", "java.security.jgss")
 
             windows {
                 iconFile.set(project.file("src/jvmMain/resources/notification/tray.ico"))
             }
         }
 
-            modules("java.sql", "java.naming", "java.management", "java.instrument", "java.security.jgss")
-
-            buildTypes.release.proguard {
-                version.set("7.9.1")
-                configurationFiles.from(project.file("proguard-rules.pro"))
-            }
+        buildTypes.release.proguard {
+            version.set("7.9.1")
+            configurationFiles.from(project.file("proguard-rules.pro"))
         }
     }
 }
