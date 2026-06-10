@@ -62,7 +62,7 @@ compose.desktop {
 
             linux{
                 iconFile.set(project.file("src/jvmMain/resources/app_icon.png"))
-                packageName = "Cyber Terrarium"
+                packageName = "CyberTerrarium"
                 debMaintainer = "123@gmail.com"
                 menuGroup = "Utility"
                 appRelease = "1.0.5"
