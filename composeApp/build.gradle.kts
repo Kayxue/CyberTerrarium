@@ -33,6 +33,9 @@ kotlin {
             implementation("com.github.oshi:oshi-core-ffm:7.3.0")
             implementation("org.xerial:sqlite-jdbc:3.46.1.3")
             runtimeOnly("org.slf4j:slf4j-simple:2.0.17")
+            implementation("io.reactivex.rxjava3:rxjava:3.1.10")
+            implementation("io.reactivex.rxjava3:rxkotlin:3.0.1")
+            implementation("com.github.android-password-store:sublime-fuzzy:2.3.4")
         }
     }
 }

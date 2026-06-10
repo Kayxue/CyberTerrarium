@@ -13,13 +13,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.reactivex.rxjava3.subjects.BehaviorSubject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.github.androidpasswordstore.sublimefuzzy.Fuzzy
 import process.ProcessManager
 import process.ProcessTreeNode
 import process.TerminationResult
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val PROCESS_REFRESH_INTERVAL_MILLIS = 2_000L
@@ -39,6 +42,27 @@ fun Processes() {
     var processTrees by remember { mutableStateOf<List<ProcessTreeNode>>(emptyList()) }
     var selectedPids by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var pendingTerminationTargets by remember { mutableStateOf<List<ProcessTerminationTarget>?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var filteredProcessTrees by remember { mutableStateOf<List<ProcessTreeNode>>(emptyList()) }
+
+    // RxJava subject that receives raw user input
+    val searchSubject = remember { BehaviorSubject.createDefault("") }
+
+    // Wire up the RxJava pipeline: debounce 1 s + distinctUntilChanged → fuzzy filter
+    DisposableEffect(Unit) {
+        val disposable = searchSubject
+            .debounce(500L, TimeUnit.MILLISECONDS)
+            .distinctUntilChanged()
+            .subscribe { query ->
+                filteredProcessTrees = fuzzyFilterProcessTrees(processTrees, query)
+            }
+        onDispose { disposable.dispose() }
+    }
+
+    // Keep filteredProcessTrees in sync when processTrees refreshes (re-apply current query)
+    LaunchedEffect(processTrees) {
+        filteredProcessTrees = fuzzyFilterProcessTrees(processTrees, searchQuery)
+    }
 
     suspend fun refreshProcesses() {
         val latestTrees: List<ProcessTreeNode> = loadProcessTrees(processManager)
@@ -62,6 +86,11 @@ fun Processes() {
             ProcessPageHeader(
                 hasSelection = selectedPids.isNotEmpty(),
                 selectedCount = selectedPids.size,
+                searchQuery = searchQuery,
+                onSearchQueryChange = { newValue ->
+                    searchQuery = newValue
+                    searchSubject.onNext(newValue)
+                },
                 onTerminateSelected = {
                     if (selectedPids.isNotEmpty()) {
                         pendingTerminationTargets = buildTerminationTargets(processTrees, selectedPids)
@@ -78,7 +107,7 @@ fun Processes() {
                 }
 
                 items(
-                    items = processTrees,
+                    items = filteredProcessTrees,
                     key = { process -> process.pid }
                 ) { rootProcess ->
                     ProcessTreeCard(
@@ -135,6 +164,8 @@ fun Processes() {
 private fun ProcessPageHeader(
     hasSelection: Boolean,
     selectedCount: Int,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onTerminateSelected: () -> Unit
 ) {
     Row(
@@ -148,15 +179,30 @@ private fun ProcessPageHeader(
             color = MaterialTheme.colorScheme.onBackground
         )
 
-        Button(
-            onClick = onTerminateSelected,
-            enabled = hasSelection,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError
-            )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(if (selectedCount > 0) "Terminate ($selectedCount)" else "Terminate")
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                placeholder = { Text("Search processes…") },
+                singleLine = true,
+                modifier = Modifier.width(240.dp)
+            )
+
+            Spacer(Modifier.width(8.dp))
+
+            Button(
+                onClick = onTerminateSelected,
+                enabled = hasSelection,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Text(if (selectedCount > 0) "Terminate ($selectedCount)" else "Terminate")
+            }
         }
     }
 }
@@ -479,4 +525,54 @@ private fun formatTerminationTargetList(targets: List<ProcessTerminationTarget>)
     }
 
     return builder.toString()
+}
+
+// ---------------------------------------------------------------------------
+// Fuzzy filtering
+// ---------------------------------------------------------------------------
+
+/**
+ * Filters a process tree list using sublime-fuzzy matching.
+ * When [query] is blank every process is shown; otherwise processes whose name
+ * or user field match the query are retained, sorted by descending match score.
+ * A root card is kept if any node in its subtree matches.
+ */
+private fun fuzzyFilterProcessTrees(
+    trees: List<ProcessTreeNode>,
+    query: String
+): List<ProcessTreeNode> {
+    if (query.isBlank()) return trees
+
+    val result = mutableListOf<Pair<ProcessTreeNode, Int>>()
+    for (root in trees) {
+        val score = bestFuzzyScore(query, root)
+        if (score != null) {
+            result.add(root to score)
+        }
+    }
+    return result
+        .sortedByDescending { (_, score) -> score }
+        .map { (node, _) -> node }
+}
+
+/**
+ * Returns the highest fuzzy score found anywhere in the subtree rooted at [node],
+ * or null if nothing matched.
+ */
+private fun bestFuzzyScore(query: String, node: ProcessTreeNode): Int? {
+    val (nameMatched, nameScore) = Fuzzy.fuzzyMatch(query, node.name)
+    val nameResult = if (nameMatched) nameScore else null
+
+    val userResult = if (node.user.isNotBlank()) {
+        val (userMatched, userScore) = Fuzzy.fuzzyMatch(query, node.user)
+        if (userMatched) userScore else null
+    } else null
+
+    val selfBest = listOfNotNull(nameResult, userResult).maxOrNull()
+
+    val childBest = node.children
+        .mapNotNull { bestFuzzyScore(query, it) }
+        .maxOrNull()
+
+    return listOfNotNull(selfBest, childBest).maxOrNull()
 }
