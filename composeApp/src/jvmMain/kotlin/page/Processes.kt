@@ -558,6 +558,10 @@ private fun fuzzyFilterProcessTrees(
 /**
  * Returns the highest fuzzy score found anywhere in the subtree rooted at [node],
  * or null if nothing matched.
+ *
+ * Matching rules:
+ *  - process name / user: sublime-fuzzy scored match
+ *  - PID: substring/prefix match on the PID string (fixed score of 80)
  */
 private fun bestFuzzyScore(query: String, node: ProcessTreeNode): Int? {
     val (nameMatched, nameScore) = Fuzzy.fuzzyMatch(query, node.name)
@@ -568,7 +572,10 @@ private fun bestFuzzyScore(query: String, node: ProcessTreeNode): Int? {
         if (userMatched) userScore else null
     } else null
 
-    val selfBest = listOfNotNull(nameResult, userResult).maxOrNull()
+    // PID is numeric – use a simple contains check on its string representation
+    val pidResult = if (node.pid.toString().contains(query)) 80 else null
+
+    val selfBest = listOfNotNull(nameResult, userResult, pidResult).maxOrNull()
 
     val childBest = node.children
         .mapNotNull { bestFuzzyScore(query, it) }
