@@ -43,7 +43,7 @@ compose.desktop {
         mainClass = "com.kay.cyberterrarium.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm)
             packageName = "Cyber Terrarium"
             packageVersion = "1.0.5"
 
@@ -57,6 +57,19 @@ compose.desktop {
                 iconFile.set(project.file("src/jvmMain/resources/app_icon.icns"))
                 bundleID = "com.kay.cyberterrarium"
                 packageName = "Cyber Terrarium"
+                dockName = "Cyber Terrarium"
+            }
+
+            linux{
+                iconFile.set(project.file("src/jvmMain/resources/app_icon.png"))
+                packageName = "Cyber Terrarium"
+                debMaintainer = "123@gmail.com"
+                menuGroup = "Utility"
+                appRelease = "1.0.5"
+                appCategory = "Utility"
+                debPackageVersion = "1.0.5"
+                rpmPackageVersion = "1.0.5"
+
             }
         }
 

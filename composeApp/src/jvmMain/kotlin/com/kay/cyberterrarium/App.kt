@@ -48,6 +48,7 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.ui.draw.clip
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun WindowScope.App(
@@ -119,7 +120,7 @@ fun WindowScope.App(
                     }
                 }
             }
-            delay(1000L)
+            delay(1000L.milliseconds)
         }
     }
 
@@ -128,8 +129,6 @@ fun WindowScope.App(
     var darkTheme by rememberSaveable { mutableStateOf(false) }
     var showHistoryDialog by remember { mutableStateOf(false) }
     var historyLogs by remember { mutableStateOf(emptyList<SystemNotification.LogEntry>()) }
-
-
 
     val items = listOf("Home", "Stats", "Process", "Jobs")
 
