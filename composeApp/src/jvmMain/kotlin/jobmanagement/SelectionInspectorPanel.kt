@@ -268,10 +268,12 @@ private fun DependencyInspector(
     selectedDependency: JobDependency,
     onDelete: (String, String) -> Unit
 ) {
-    Text("Dependency", style = MaterialTheme.typography.titleSmall)
-    Text("Job: ${selectedDependency.jobId}")
-    Text("Depends on: ${selectedDependency.upstreamJobId}")
-    AppButton(onClick = {
-        onDelete(selectedDependency.jobId, selectedDependency.upstreamJobId)
-    }) { Text("Delete Dependency") }
+    Column {
+        Text("Dependency", style = MaterialTheme.typography.titleSmall)
+        Text("Job: ${selectedDependency.jobId}")
+        Text("Depends on: ${selectedDependency.upstreamJobId}")
+        AppButton(onClick = {
+            onDelete(selectedDependency.jobId, selectedDependency.upstreamJobId)
+        }) { Text("Delete Dependency") }
+    }
 }
