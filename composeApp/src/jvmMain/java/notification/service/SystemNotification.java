@@ -34,13 +34,48 @@ public class SystemNotification implements AutoCloseable {
         Notification safeModel = new Notification(title, info, status);
         ensureInitialized();
         saveNotificationToDb(safeText(safeModel.getTitle()), safeText(safeModel.getInfo()), safeModel.getStatus());
-        if (!supported || trayIcon == null) {
-            return;
-        }
         String safeTitle = safeText(safeModel.getTitle());
         String content = safeText(safeModel.getInfo());
+        if (!supported || trayIcon == null) {
+            if (isLinux()) {
+                notifyLinux(safeTitle, content, safeModel.getStatus());
+            }
+            return;
+        }
         TrayIcon.MessageType type = toMessageType(safeModel.getStatus());
         trayIcon.displayMessage(safeTitle, content, type);
+    }
+
+    private static boolean isLinux() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        return os.contains("linux");
+    }
+
+    private void notifyLinux(String title, String body, Notification.Status status) {
+        try {
+            String urgency = toNotifySendUrgency(status);
+            ProcessBuilder pb = new ProcessBuilder(
+                "notify-send",
+                "--app-name=Cyber Terrarium",
+                "--urgency=" + urgency,
+                "--",
+                title,
+                body
+            );
+            pb.inheritIO();
+            pb.start();
+        } catch (Exception ignored) {
+            // notify-send not available — silently skip
+        }
+    }
+
+    private String toNotifySendUrgency(Notification.Status status) {
+        if (status == null) return "normal";
+        return switch (status) {
+            case ERROR -> "critical";
+            case WARNING -> "normal";
+            case INFO, SUCCESS, NONE -> "low";
+        };
     }
 
     private void saveNotificationToDb(String title, String message, Notification.Status status) {
