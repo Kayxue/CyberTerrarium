@@ -62,7 +62,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '25'
-          distribution: 'temurin'
+          distribution: 'zulu'
 
       - name: 🐘 Set up Gradle
         uses: gradle/actions/setup-gradle@v6
