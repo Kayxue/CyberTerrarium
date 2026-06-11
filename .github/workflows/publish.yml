@@ -62,7 +62,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '25'
-          distribution: 'zulu'
+          distribution: 'liberica'
 
       - name: ⚙️ Install RPM tooling (Linux)
         if: matrix.platform == 'linux'
