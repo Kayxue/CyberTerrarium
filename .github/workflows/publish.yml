@@ -64,9 +64,6 @@ jobs:
           java-version: '25'
           distribution: 'zulu'
 
-      - name: 🐘 Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
-
       - name: ⚙️ Install RPM tooling (Linux)
         if: matrix.platform == 'linux'
         run: |
