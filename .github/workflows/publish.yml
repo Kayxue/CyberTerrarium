@@ -75,7 +75,7 @@ jobs:
         run: ./gradlew :composeApp:packageDmg
         
       - name: ⬆️ Upload DMG artifact (macOS)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: matrix.platform == 'macos'
         with:
           name: ${{ github.event.repository.name }}-${{ matrix.platform }}-${{ matrix.arch }}
@@ -86,7 +86,7 @@ jobs:
         run: ./gradlew :composeApp:packageMsi
 
       - name: ⬆️ Upload MSI artifact (Windows)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: matrix.platform == 'windows'
         with:
           name: ${{ github.event.repository.name }}-${{ matrix.platform }}-${{ matrix.arch }}
@@ -97,7 +97,7 @@ jobs:
         run: ./gradlew :composeApp:packageDeb
 
       - name: ⬆️ Upload DEB artifact (Linux)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: matrix.platform == 'linux'
         with:
           name: ${{ github.event.repository.name }}-${{ matrix.platform }}-${{ matrix.arch }}-deb
@@ -108,7 +108,7 @@ jobs:
         run: ./gradlew :composeApp:packageRpm
 
       - name: ⬆️ Upload RPM artifact (Linux)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: matrix.platform == 'linux'
         with:
           name: ${{ github.event.repository.name }}-${{ matrix.platform }}-${{ matrix.arch }}-rpm
