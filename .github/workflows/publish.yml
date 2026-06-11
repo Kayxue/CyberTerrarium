@@ -1,0 +1,163 @@
+name: KMP Desktop Release
+
+on:
+  push:
+    # Trigger the workflow on pushes to the main branch
+    # or when a new tag is pushed.
+    branches:
+      - master
+    tags:
+      - 'v*.*.*'
+  # Allows you to run this workflow manually from the Actions tab.
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }} on ${{ matrix.arch }}
+    
+    # Use a matrix strategy to run the same job on different OSes and architectures.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS (produces dmg)
+          - os: macos-latest
+            platform: macos
+            arch: x64
+
+          # macOS ARM64 (produces dmg)
+          - os: macos-latest
+            platform: macos
+            arch: arm64
+            
+          # Windows x64 (produces msi)
+          - os: windows-latest
+            platform: windows
+            arch: x64
+
+          # Windows ARM64 (produces msi)
+          - os: windows-11-arm
+            platform: windows
+            arch: arm64
+            
+          # Linux x64 (produces deb + rpm)
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            
+          # Linux ARM64 (produces deb + rpm)
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: arm64
+    
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ☕ Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      - name: 🐘 Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: ⚙️ Install RPM tooling (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt update   
+          sudo apt install -y rpm fakeroot
+
+      - name: 🍏 Package DMG (macOS)
+        if: matrix.platform == 'macos'
+        run: ./gradlew :composeApp:packageDmg
+        
+      - name: ⬆️ Upload DMG artifact (macOS)
+        uses: actions/upload-artifact@v4
+        if: matrix.platform == 'macos'
+        with:
+          name: ${{ github.event.repository.name }}-${{ matrix.platform }}-${{ matrix.arch }}
+          path: composeApp/build/compose/binaries/main/dmg/*.dmg
+
+      - name: 🪟 Package MSI (Windows)
+        if: matrix.platform == 'windows'
+        run: ./gradlew :composeApp:packageMsi
+
+      - name: ⬆️ Upload MSI artifact (Windows)
+        uses: actions/upload-artifact@v4
+        if: matrix.platform == 'windows'
+        with:
+          name: ${{ github.event.repository.name }}-${{ matrix.platform }}-${{ matrix.arch }}
+          path: composeApp/build/compose/binaries/main/msi/*.msi
+
+      - name: 🐧 Package DEB (Linux)
+        if: matrix.platform == 'linux'
+        run: ./gradlew :composeApp:packageDeb
+
+      - name: ⬆️ Upload DEB artifact (Linux)
+        uses: actions/upload-artifact@v4
+        if: matrix.platform == 'linux'
+        with:
+          name: ${{ github.event.repository.name }}-${{ matrix.platform }}-${{ matrix.arch }}-deb
+          path: composeApp/build/compose/binaries/main/deb/*.deb
+
+      - name: 🐧 Package RPM (Linux)
+        if: matrix.platform == 'linux'
+        run: ./gradlew :composeApp:packageRpm
+
+      - name: ⬆️ Upload RPM artifact (Linux)
+        uses: actions/upload-artifact@v4
+        if: matrix.platform == 'linux'
+        with:
+          name: ${{ github.event.repository.name }}-${{ matrix.platform }}-${{ matrix.arch }}-rpm
+          path: composeApp/build/compose/binaries/main/rpm/*.rpm
+          
+  create_release:
+    name: Create GitHub Release
+    # This job depends on the successful completion of the build job.
+    needs: [build]
+    
+    # This job only runs if the workflow was triggered by a tag push.
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      - name: ⬇️ Download all artifacts
+        # Downloads all artifacts from the 'build' job.
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+      
+      - name: 📝 Create release notes
+        id: release_notes
+        run: |
+          echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          echo "body=### What's new in this release" >> "$GITHUB_OUTPUT"
+          echo "body+=$(git log --pretty=format:'- %s' -n 1)" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🚀 Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          draft: false
+          prerelease: false
+          tag_name: ${{ steps.release_notes.outputs.tag }}
+          name: ${{ steps.release_notes.outputs.name }}
+          body: ${{ steps.release_notes.outputs.body }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
