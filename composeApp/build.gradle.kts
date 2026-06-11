@@ -54,6 +54,8 @@ compose.desktop {
 
             windows {
                 iconFile.set(project.file("src/jvmMain/resources/notification/tray.ico"))
+                shortcut = true
+                menu = true
             }
 
             macOS {
