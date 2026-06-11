@@ -73,6 +73,14 @@ jobs:
       - name: 🍏 Package DMG (macOS)
         if: matrix.platform == 'macos'
         run: ./gradlew :composeApp:packageDmg
+
+      - name: 🏷️ Rename DMG with arch (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          for f in composeApp/build/compose/binaries/main/dmg/*.dmg; do
+            base="${f%.dmg}"
+            mv "$f" "${base}-${{ matrix.arch }}.dmg"
+          done
         
       - name: ⬆️ Upload DMG artifact (macOS)
         uses: actions/upload-artifact@v7
@@ -84,6 +92,15 @@ jobs:
       - name: 🪟 Package MSI (Windows)
         if: matrix.platform == 'windows'
         run: ./gradlew :composeApp:packageMsi
+
+      - name: 🏷️ Rename MSI with arch (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          Get-ChildItem composeApp/build/compose/binaries/main/msi/*.msi | ForEach-Object {
+            $newName = $_.BaseName + "-${{ matrix.arch }}" + $_.Extension
+            Rename-Item $_.FullName (Join-Path $_.DirectoryName $newName)
+          }
 
       - name: ⬆️ Upload MSI artifact (Windows)
         uses: actions/upload-artifact@v7
