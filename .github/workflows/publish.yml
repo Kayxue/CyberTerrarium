@@ -143,13 +143,13 @@ jobs:
     
     steps:
       - name: 📦 Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 
 
       - name: ⬇️ Download all artifacts
         # Downloads all artifacts from the 'build' job.
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts/
       
